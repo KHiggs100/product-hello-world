@@ -1,0 +1,17 @@
+[
+  {
+    "title": "Self-serve onboarding flow",
+    "year": 2025,
+    "summary": "Rebuilt the new-customer onboarding from a 6-step wizard into a single guided checklist. Time-to-first-value dropped from 14 days to 3."
+  },
+  {
+    "title": "Refunds API v2",
+    "year": 2024,
+    "summary": "Led the cross-team rewrite of our refunds platform. Halved support tickets and unblocked three enterprise deals."
+  },
+  {
+    "title": "Mobile dashboard",
+    "year": 2023,
+    "summary": "Shipped the first mobile experience for our merchant dashboard. 38% of active merchants now check in on mobile weekly."
+  }
+]

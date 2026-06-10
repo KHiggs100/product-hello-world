@@ -3,60 +3,72 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sam Rivera — Product Manager</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Backstage Pass — Learn to read what AI builds</title>
+    <meta
+      name="description"
+      content="A friendly, hands-on course for adults with zero coding experience. Pull back the curtain on code and AI."
+    />
+    <link rel="stylesheet" href="course/theme.css" />
   </head>
   <body>
-    <header class="hero">
-      <div class="hero__inner">
-        <p class="hero__eyebrow">Product Manager</p>
-        <h1 class="hero__name">Sam Rivera</h1>
-        <p class="hero__tagline">
-          I help engineering teams ship things customers actually use.
-          Currently building payments tools at a fintech you've heard of.
-        </p>
-        <nav class="hero__nav">
-          <a href="#about">About</a>
-          <a href="#projects">Projects</a>
-          <a href="#contact">Contact</a>
-        </nav>
+    <!-- Skip link for keyboard / screen-reader users -->
+    <a class="skip-link" href="#stage">Skip to content</a>
+
+    <header class="topbar">
+      <div class="topbar__inner">
+        <a class="brand" href="#/" aria-label="Backstage Pass home">
+          <span class="brand__mark" aria-hidden="true">🎭</span>
+          <span class="brand__name">Backstage&nbsp;Pass</span>
+        </a>
+
+        <!-- Stage-lights progress bar (filled in by app.js) -->
+        <div
+          class="lights"
+          id="lights"
+          role="progressbar"
+          aria-label="Course progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        ></div>
+
+        <div class="topbar__actions">
+          <button class="btn btn--ghost" id="glossary-toggle" aria-expanded="false" aria-controls="glossary">
+            Jargon&nbsp;Buster
+          </button>
+          <button class="btn btn--ghost btn--danger" id="reset-progress">
+            Reset
+          </button>
+        </div>
       </div>
     </header>
 
-    <main>
-      <section id="about" class="section">
-        <h2>About</h2>
-        <p>
-          I've spent the last seven years in product, mostly in B2B SaaS and
-          fintech. I care about clear writing, honest roadmaps, and the kind
-          of customer research where you actually leave the building.
-        </p>
-        <p>
-          Outside of work I run slowly, cook ambitiously, and am very slowly
-          learning to play the bass guitar.
-        </p>
-      </section>
+    <!-- Everything below is rendered by app.js into #stage -->
+    <main id="stage" class="stage" tabindex="-1"></main>
 
-      <section id="projects" class="section section--alt">
-        <h2>Selected projects</h2>
-        <div id="projects-list" class="projects">
-          <!-- Cards are rendered by app.js from projects.json -->
-        </div>
-      </section>
-
-      <section id="contact" class="section">
-        <h2>Get in touch</h2>
-        <p>
-          The fastest way to reach me is email:
-          <a href="mailto:sam@example.com">sam@example.com</a>.
-        </p>
-      </section>
-    </main>
+    <!-- Jargon Buster slide-out panel (content injected by app.js) -->
+    <aside class="glossary" id="glossary" aria-hidden="true" aria-label="Jargon Buster glossary">
+      <div class="glossary__head">
+        <h2>Jargon Buster</h2>
+        <button class="btn btn--ghost" id="glossary-close" aria-label="Close glossary">✕</button>
+      </div>
+      <input
+        type="search"
+        id="glossary-search"
+        class="glossary__search"
+        placeholder="Search a word…"
+        aria-label="Search the glossary"
+      />
+      <dl class="glossary__list" id="glossary-list"></dl>
+    </aside>
+    <div class="glossary__scrim" id="glossary-scrim" hidden></div>
 
     <footer class="footer">
-      <p>&copy; 2026 Sam Rivera. Built with HTML, CSS, and stubbornness.</p>
+      <p>Backstage Pass — a place to learn, where nothing you click can break.</p>
     </footer>
 
-    <script src="app.js"></script>
+    <!-- Data first (the lessons are just data — like demo/projects.json), then the engine -->
+    <script src="course/content.js"></script>
+    <script src="course/app.js"></script>
   </body>
 </html>
