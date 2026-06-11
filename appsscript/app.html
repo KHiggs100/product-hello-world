@@ -1,0 +1,1729 @@
+<script>
+/* =========================================================================
+   app.js — the engine.
+   It reads COURSE (from content.js) and turns it into screens. Progress is
+   saved in your browser only (localStorage) — nothing leaves this device.
+   ========================================================================= */
+
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "backstage-progress-v1";
+  const stage = document.getElementById("stage");
+
+  /* ---- Progress (in-browser only) ------------------------------------ */
+  function loadProgress() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { done: [] };
+    } catch (_) {
+      return { done: [] };
+    }
+  }
+  function saveProgress(p) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+  }
+  function isDone(lessonId) {
+    return loadProgress().done.includes(lessonId);
+  }
+  function markDone(lessonId) {
+    const p = loadProgress();
+    if (!p.done.includes(lessonId)) {
+      p.done.push(lessonId);
+      saveProgress(p);
+      renderLights();
+    }
+  }
+
+  /* Every lesson that exists anywhere in the course = one stage light. */
+  function allLessons() {
+    return COURSE.modules
+      .filter((m) => m.lessons)
+      .flatMap((m) => m.lessons);
+  }
+
+  /* ---- Completion + badges ------------------------------------------- */
+  function teachableModules() {
+    return COURSE.modules.filter((m) => m.lessons && m.curtainCall);
+  }
+  function moduleComplete(m) {
+    const done = loadProgress().done;
+    return m.lessons && m.lessons.every((l) => done.includes(l.id));
+  }
+  function courseComplete() {
+    return teachableModules().every(moduleComplete);
+  }
+  function earnedBadges() {
+    return teachableModules()
+      .filter(moduleComplete)
+      .map((m) => ({ star: m.curtainCall.star, badge: m.curtainCall.badge }));
+  }
+
+  function renderLights() {
+    const lessons = allLessons();
+    const done = loadProgress().done;
+    const el = document.getElementById("lights");
+    el.innerHTML = lessons
+      .map((l) => {
+        const on = done.includes(l.id) ? " light--on" : "";
+        return `<span class="light${on}" title="Lesson ${l.id}"></span>`;
+      })
+      .join("");
+    const pct = lessons.length ? Math.round((done.length / lessons.length) * 100) : 0;
+    el.setAttribute("aria-valuenow", String(pct));
+  }
+
+  /* ---- Tiny helpers --------------------------------------------------- */
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function go(hash) {
+    location.hash = hash;
+  }
+  function findModule(id) {
+    return COURSE.modules.find((m) => m.id === Number(id));
+  }
+  // A short burst of confetti — skipped for anyone who prefers reduced motion.
+  function celebrate() {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const layer = document.createElement("div");
+    layer.className = "confetti";
+    layer.setAttribute("aria-hidden", "true");
+    const bits = ["🎉", "✨", "🎊", "⭐", "🎈", "👏"];
+    for (let i = 0; i < 36; i++) {
+      const s = document.createElement("span");
+      s.textContent = bits[Math.floor(Math.random() * bits.length)];
+      s.style.left = Math.random() * 100 + "vw";
+      s.style.animationDelay = Math.random() * 0.6 + "s";
+      s.style.animationDuration = 2.5 + Math.random() * 1.5 + "s";
+      s.style.fontSize = 14 + Math.random() * 18 + "px";
+      layer.appendChild(s);
+    }
+    document.body.appendChild(layer);
+    setTimeout(() => layer.remove(), 5200);
+  }
+
+  /* ---- Router --------------------------------------------------------- */
+  function route() {
+    const parts = location.hash.replace(/^#\//, "").split("/").filter(Boolean);
+    stage.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+
+    if (parts[0] === "map") return renderMap();
+    if (parts[0] === "lesson") return renderLesson(parts[1], Number(parts[2]) || 0);
+    if (parts[0] === "curtain") return renderCurtain(parts[1]);
+    return renderWelcome();
+  }
+
+  /* ---- Welcome -------------------------------------------------------- */
+  function renderWelcome() {
+    const w = COURSE.welcome;
+    const started = loadProgress().done.length > 0;
+    stage.innerHTML = `
+      <section class="welcome">
+        <p class="eyebrow">${esc(w.eyebrow)}</p>
+        <h1>${esc(w.title)}</h1>
+        <p class="lead">${esc(w.lead)}</p>
+        <ul class="welcome__promises">
+          ${w.promises.map((p) => `<li>${esc(p)}</li>`).join("")}
+        </ul>
+        <button class="btn btn--lg" id="start">
+          ${started ? "Continue where you left off" : esc(w.cta)}
+        </button>
+      </section>
+    `;
+    document.getElementById("start").onclick = () => go("/map");
+  }
+
+  /* ---- Module map ----------------------------------------------------- */
+  function renderMap() {
+    const done = loadProgress().done;
+    const lessons = allLessons();
+    const lessonsDone = lessons.filter((l) => done.includes(l.id)).length;
+    const acts = teachableModules();
+    const actsDone = acts.filter(moduleComplete).length;
+    const badges = earnedBadges();
+    const complete = courseComplete();
+    stage.innerHTML = `
+      <p class="eyebrow">Your journey</p>
+      <h1>${complete ? "You've completed the show 🎭" : "Choose where to begin"}</h1>
+      <p>Seven short acts take you from "what even is this?" to using AI to code — wisely and safely.</p>
+
+      <div class="mapbar">
+        <div class="mapbar__row">
+          <span><strong>${lessonsDone}</strong> / ${lessons.length} lessons done</span>
+          <span><strong>${actsDone}</strong> / ${acts.length} acts complete</span>
+        </div>
+        ${
+          badges.length
+            ? `<div class="mapbar__badges">${badges
+                .map((b) => `<span class="badge-chip">${b.star} ${esc(b.badge)}</span>`)
+                .join("")}</div>`
+            : ""
+        }
+      </div>
+
+      ${
+        complete
+          ? `<div class="finale-banner">
+              <div class="finale__star">🎓</div>
+              <h2>Backstage Pass — Graduate</h2>
+              <p>You've earned every badge. Replay any act whenever you like — or start fresh.</p>
+              <button class="btn" id="replay">↺ Replay from the start</button>
+            </div>`
+          : ""
+      }
+
+      <div class="module-list">
+        ${COURSE.modules
+          .map((m) => {
+            const lessons = m.lessons || [];
+            const doneCount = lessons.filter((l) => done.includes(l.id)).length;
+            const complete = lessons.length && doneCount === lessons.length;
+            const status = !m.available
+              ? `<span class="module__done">Coming soon</span>`
+              : complete
+              ? `<span class="module__done">✓ Done</span>`
+              : doneCount
+              ? `<span class="module__done">${doneCount}/${lessons.length}</span>`
+              : "";
+            return `
+              <button class="module" data-module="${m.id}" ${m.available ? "" : "disabled"}>
+                <span class="module__num">${m.id}</span>
+                <span>
+                  <h3>${esc(m.title)}</h3>
+                  <p>${esc(m.blurb)}</p>
+                </span>
+                <span style="margin-left:auto">${status}</span>
+              </button>`;
+          })
+          .join("")}
+      </div>
+    `;
+    stage.querySelectorAll(".module[data-module]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const m = findModule(btn.dataset.module);
+        if (!m || !m.available) return;
+        // Resume at the first lesson they haven't finished.
+        const idx = m.lessons.findIndex((l) => !done.includes(l.id));
+        go(`/lesson/${m.id}/${idx === -1 ? 0 : idx}`);
+      });
+    });
+    const replay = document.getElementById("replay");
+    if (replay) replay.onclick = resetProgress;
+  }
+
+  /* ---- Lesson --------------------------------------------------------- */
+  function renderLesson(moduleId, idx) {
+    const m = findModule(moduleId);
+    if (!m || !m.lessons || !m.lessons[idx]) return go("/map");
+    const lesson = m.lessons[idx];
+    const isLast = idx === m.lessons.length - 1;
+
+    stage.innerHTML = `
+      <p class="crumbs"><a href="#/map">Map</a> › Act ${m.id}: ${esc(m.title)} › Lesson ${lesson.id}</p>
+      <h1>${esc(lesson.title)}</h1>
+      ${lesson.intro.map((p) => `<p class="lead">${p}</p>`).join("")}
+      <div class="card" id="game"></div>
+      ${lesson.stagehand ? stagehandHTML(lesson.stagehand) : ""}
+      <div class="cue" hidden id="cue"><strong>Cue card:</strong> ${lesson.cue}</div>
+      <div id="advance" style="margin-top:1.5rem" hidden>
+        <button class="btn btn--lg" id="next">
+          ${isLast ? "Finish the act →" : "Next lesson →"}
+        </button>
+      </div>
+    `;
+
+    const onComplete = () => {
+      markDone(lesson.id);
+      document.getElementById("cue").hidden = false;
+      document.getElementById("advance").hidden = false;
+      // Reveal the Next button without yanking the page or stealing focus —
+      // important in the typing sandboxes, where focus must stay in the input.
+      const active = document.activeElement;
+      const typing = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
+      if (!typing) document.getElementById("next").focus({ preventScroll: true });
+    };
+
+    document.getElementById("next").onclick = () => {
+      if (isLast) go(`/curtain/${m.id}`);
+      else go(`/lesson/${m.id}/${idx + 1}`);
+    };
+
+    // Wire the Stagehand (pre-scripted AI helper), if this lesson has one.
+    const shToggle = document.getElementById("sh-toggle");
+    if (shToggle) {
+      shToggle.onclick = () => {
+        const panel = document.getElementById("sh-panel");
+        const opening = panel.hidden;
+        panel.hidden = !opening;
+        shToggle.setAttribute("aria-expanded", String(opening));
+      };
+    }
+
+    // Mount the right game (GAMES registry is defined near the bottom).
+    const mount = document.getElementById("game");
+    (GAMES[lesson.game] || (() => {}))(mount, lesson, onComplete);
+
+    // If they already completed it, let them move on straight away.
+    if (isDone(lesson.id)) onComplete();
+  }
+
+  /* The Stagehand: a pre-scripted AI exchange that models good prompting
+     AND careful reading of what the AI says. Replies are written in
+     content.js — there is no live AI call. */
+  function stagehandHTML(sh) {
+    return `
+      <div class="stagehand">
+        <button class="btn btn--ghost" id="sh-toggle" aria-expanded="false" aria-controls="sh-panel">
+          🎭 Ask the Stagehand (the AI)
+        </button>
+        <div class="stagehand__panel" id="sh-panel" hidden>
+          <div class="chat">
+            <div class="chat__you">
+              <div class="chat__role">You asked</div>${esc(sh.prompt)}
+            </div>
+            ${sh.reply
+              .map((r) => `<div class="chat__ai"><div class="chat__role">🎭 Stagehand</div>${r}</div>`)
+              .join("")}
+          </div>
+          <div class="cue stagehand__watch"><strong>Watch for:</strong> ${esc(sh.watch)}</div>
+        </div>
+      </div>`;
+  }
+
+  /* ---- Game: Spot the Block (tap the matching pieces of code) --------- */
+  function spotBlock(mount, lesson, onComplete) {
+    const spot = lesson.spot;
+    const targetCount = spot.tokens.filter((t) => t.target).length;
+    const found = new Set();
+
+    mount.innerHTML = `
+      <p>${esc(spot.prompt)}</p>
+      <pre class="code">${spot.tokens
+        .map((tk, i) =>
+          tk.tap ? `<button class="tok" data-i="${i}">${esc(tk.t)}</button>` : esc(tk.t)
+        )
+        .join("")}</pre>
+      <p class="spot-count" id="spot-count" aria-live="polite">Found 0 of ${targetCount} — tap them in the code above.</p>
+      <div class="feedback" id="spot-fb" aria-live="polite"></div>
+    `;
+    const fb = mount.querySelector("#spot-fb");
+    const count = mount.querySelector("#spot-count");
+
+    mount.querySelectorAll(".tok").forEach((btn) =>
+      (btn.onclick = () => {
+        const tk = spot.tokens[Number(btn.dataset.i)];
+        if (tk.target) {
+          if (found.has(btn.dataset.i)) return;
+          found.add(btn.dataset.i);
+          btn.classList.add("tok--found");
+          btn.disabled = true;
+
+          const remaining = targetCount - found.size;
+          count.textContent = `Found ${found.size} of ${targetCount}.`;
+          if (remaining === 0) {
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ That's all of them — you spotted every one. The Next button is below.";
+            onComplete();
+          } else {
+            fb.className = "feedback";
+            fb.textContent = `Good one — keep going, ${remaining} more to find.`;
+          }
+        } else {
+          btn.classList.add("tok--wrong");
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "Not that one — keep looking.";
+          setTimeout(() => btn.classList.remove("tok--wrong"), 600);
+        }
+      })
+    );
+  }
+
+  /* ---- Game: Build the Setlist (a list drives what appears) ---------- */
+  function buildSetlist(mount, lesson, onComplete) {
+    let items = lesson.setlist.items.slice();
+    let pool = lesson.setlist.pool.slice();
+    let addedOnce = false;
+    let removedOnce = false;
+    let done = false;
+
+    function check() {
+      if (addedOnce && removedOnce && !done) {
+        done = true;
+        onComplete();
+      }
+    }
+
+    function render() {
+      mount.innerHTML = `
+        <div class="setlist">
+          <p>Task: <strong>add one act and remove one act</strong> — watch the cards on the right follow the list.</p>
+          <div>
+            <h2 style="margin-top:0">The list (data)</h2>
+            <ul class="steps">
+              ${items
+                .map(
+                  (t, i) =>
+                    `<li class="step">${esc(t)}
+                      <button class="btn btn--ghost" data-remove="${i}" style="margin-left:auto" aria-label="Remove ${esc(t)}">✕ remove</button></li>`
+                )
+                .join("") || `<li class="step">Empty list — add something!</li>`}
+            </ul>
+            <h2>Add an act</h2>
+            <div class="pool">
+              ${pool
+                .map((t, i) => `<button class="btn btn--ghost" data-add="${i}">+ ${esc(t)}</button>`)
+                .join("") || `<span style="color:var(--ink-soft)">Pool's empty.</span>`}
+            </div>
+          </div>
+          <div>
+            <h2 style="margin-top:0">The show (what appears)</h2>
+            <div class="preview-cards">
+              ${items
+                .map((t) => `<div class="preview-card"><strong>${esc(t)}</strong></div>`)
+                .join("") || `<p>No cards — the list is empty.</p>`}
+            </div>
+          </div>
+          <div class="feedback ${done ? "feedback--good" : ""}" aria-live="polite">${
+        done ? "✓ See it? The list IS the page. Change one, the other follows." : ""
+      }</div>
+        </div>
+      `;
+      mount.querySelectorAll("[data-add]").forEach((b) =>
+        (b.onclick = () => {
+          const i = Number(b.dataset.add);
+          items.push(pool[i]);
+          pool.splice(i, 1);
+          addedOnce = true;
+          check();
+          render();
+        })
+      );
+      mount.querySelectorAll("[data-remove]").forEach((b) =>
+        (b.onclick = () => {
+          const i = Number(b.dataset.remove);
+          pool.push(items[i]);
+          items.splice(i, 1);
+          removedOnce = true;
+          check();
+          render();
+        })
+      );
+    }
+    render();
+  }
+
+  /* ---- Game: Choose (code + multiple choice; all-correct to pass) ---- */
+  function choose(mount, lesson, onComplete) {
+    const rounds = lesson.rounds;
+    let correct = 0;
+    mount.innerHTML = `<div id="rounds"></div>`;
+    const wrap = mount.querySelector("#rounds");
+
+    rounds.forEach((round) => {
+      const block = document.createElement("div");
+      block.style.marginBottom = "1.6rem";
+      block.innerHTML = `
+        ${round.code ? `<pre class="code">${esc(round.code)}</pre>` : ""}
+        <p style="color:var(--ink);font-weight:600">${esc(round.question)}</p>
+      `;
+      const fb = document.createElement("div");
+      fb.className = "feedback";
+      round.options.forEach((opt, oi) => {
+        const b = document.createElement("button");
+        b.className = "choice";
+        b.textContent = opt;
+        b.onclick = () => {
+          if (oi === round.answer) {
+            b.classList.add("choice--right");
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ Correct";
+            [...block.querySelectorAll(".choice")].forEach((x) => (x.disabled = true));
+            correct++;
+            if (correct === rounds.length) onComplete();
+          } else {
+            b.classList.add("choice--wrong");
+            fb.className = "feedback feedback--nudge";
+            fb.textContent = "Not quite — " + round.nudge;
+          }
+        };
+        block.appendChild(b);
+      });
+      block.appendChild(fb);
+      wrap.appendChild(block);
+    });
+  }
+
+  /* ---- Live preview helper (a real mini web page in an iframe) ------- */
+  // Builds a self-contained HTML document for the sandbox preview. No
+  // scripts run inside it — we build the body in the parent and hand it over.
+  function previewDoc(body, opts) {
+    opts = opts || {};
+    const accent = opts.accent || "#c4344b";
+    const size = opts.size || 40;
+    return `<!doctype html><html><head><meta charset="utf-8">
+      <style>
+        :root { --accent: ${accent}; }
+        body { margin:0; font-family: system-ui, "Segoe UI", sans-serif;
+               background:#14121c; color:#f4f1ea; padding:24px; }
+        .eyebrow { color:var(--accent); text-transform:uppercase; letter-spacing:2px;
+                   font-size:.7rem; font-weight:800; margin:0 0 .4rem; }
+        h1 { font-size:${size}px; margin:0 0 .6rem; line-height:1.1; }
+        .tagline { color:#b8b2c4; margin:0; }
+        .btn { display:inline-block; margin-top:1rem; background:var(--accent);
+               color:#14121c; font-weight:700; padding:.5rem 1rem; border-radius:8px; }
+        .card { background:#272335; border-left:3px solid var(--accent);
+                border-radius:8px; padding:.7rem 1rem; margin-top:.6rem; }
+        .card h3 { margin:0; font-size:1rem; }
+        .card p { margin:.2rem 0 0; color:#b8b2c4; font-size:.85rem; }
+      </style></head><body>${body}</body></html>`;
+  }
+
+  function heroBody(d) {
+    return `
+      <p class="eyebrow">${esc(d.eyebrow)}</p>
+      <h1>${esc(d.name)}</h1>
+      <p class="tagline">${esc(d.tagline)}</p>
+      <span class="btn">Get in touch</span>`;
+  }
+
+  // Relative luminance + contrast ratio, so the CSS game can warn about
+  // colours that would be hard to read (an accessibility teaching moment).
+  function contrastOnDark(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!m) return 21;
+    const lin = (c) => {
+      c = parseInt(c, 16) / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    };
+    const L = 0.2126 * lin(m[1]) + 0.7152 * lin(m[2]) + 0.0722 * lin(m[3]);
+    const bg = 0.0114; // luminance of #14121c (the dark stage background)
+    return (Math.max(L, bg) + 0.05) / (Math.min(L, bg) + 0.05);
+  }
+
+  /* ---- Game: Change the Words (HTML / bones) ------------------------- */
+  function editHtml(mount, lesson, onComplete) {
+    const d = lesson.editHtml;
+    const state = { name: d.name, tagline: d.tagline, eyebrow: d.eyebrow };
+
+    mount.innerHTML = `
+      <div class="sandbox">
+        <div class="sandbox__edit">
+          <label class="field">Heading (your name)
+            <input type="text" id="f-name" value="${esc(state.name)}" />
+          </label>
+          <label class="field">Tagline (a line about you)
+            <input type="text" id="f-tagline" value="${esc(state.tagline)}" />
+          </label>
+          <p class="muted">The HTML, updating as you type:</p>
+          <pre class="code" id="html-view"></pre>
+          <button class="btn btn--ghost" id="reset">↺ Reset</button>
+        </div>
+        <div class="sandbox__preview">
+          <p class="muted">The live page:</p>
+          <iframe class="preview" id="preview" title="Live preview"></iframe>
+        </div>
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+
+    const view = mount.querySelector("#html-view");
+    const frame = mount.querySelector("#preview");
+    const fb = mount.querySelector("#fb");
+    let completed = false;
+
+    function update() {
+      view.textContent = `<h1>${state.name}</h1>\n<p class="tagline">${state.tagline}</p>`;
+      frame.srcdoc = previewDoc(heroBody(state));
+      const changed = state.name !== d.name || state.tagline !== d.tagline;
+      if (changed && !completed) {
+        completed = true;
+        fb.className = "feedback feedback--good";
+        fb.textContent = "✓ That's your page now — you just edited HTML. Next is below.";
+        onComplete();
+      }
+    }
+
+    mount.querySelector("#f-name").oninput = (e) => { state.name = e.target.value; update(); };
+    mount.querySelector("#f-tagline").oninput = (e) => { state.tagline = e.target.value; update(); };
+    mount.querySelector("#reset").onclick = () => {
+      state.name = d.name; state.tagline = d.tagline;
+      mount.querySelector("#f-name").value = d.name;
+      mount.querySelector("#f-tagline").value = d.tagline;
+      update();
+    };
+    update();
+  }
+
+  /* ---- Game: Repaint the Set (CSS / skin) ---------------------------- */
+  function editCss(mount, lesson, onComplete) {
+    const d = lesson.editCss;
+    const state = { accent: d.accent, size: d.size };
+    const hero = { eyebrow: "Product Manager", name: "Sam Rivera", tagline: "I help teams ship things customers actually use." };
+
+    mount.innerHTML = `
+      <div class="sandbox">
+        <div class="sandbox__edit">
+          <label class="field">Accent colour
+            <input type="color" id="f-accent" value="${state.accent}" />
+          </label>
+          <label class="field">Heading size: <span id="size-label">${state.size}px</span>
+            <input type="range" id="f-size" min="24" max="72" value="${state.size}" />
+          </label>
+          <p class="muted">One named value, <code>--accent</code>, used in several places:</p>
+          <pre class="code" id="css-view"></pre>
+          <div class="feedback" id="contrast" aria-live="polite"></div>
+          <button class="btn btn--ghost" id="reset">↺ Reset</button>
+        </div>
+        <div class="sandbox__preview">
+          <p class="muted">The live page:</p>
+          <iframe class="preview" id="preview" title="Live preview"></iframe>
+        </div>
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+
+    const view = mount.querySelector("#css-view");
+    const frame = mount.querySelector("#preview");
+    const contrast = mount.querySelector("#contrast");
+    const fb = mount.querySelector("#fb");
+    let completed = false;
+
+    function update() {
+      view.textContent = `:root {\n  --accent: ${state.accent};\n}\nh1 { font-size: ${state.size}px; }`;
+      frame.srcdoc = previewDoc(heroBody(hero), { accent: state.accent, size: state.size });
+
+      // Accessibility nudge: warn if the accent is hard to read on the dark page.
+      if (contrastOnDark(state.accent) < 3) {
+        contrast.className = "feedback feedback--nudge";
+        contrast.textContent = "⚠ That colour is hard to read on the dark background. Looks matter — but so does being readable. Accessibility counts.";
+      } else {
+        contrast.className = "feedback";
+        contrast.textContent = "";
+      }
+
+      const changed = state.accent.toLowerCase() !== d.accent.toLowerCase() || state.size !== d.size;
+      if (changed && !completed) {
+        completed = true;
+        fb.className = "feedback feedback--good";
+        fb.textContent = "✓ One change, repainted everywhere — that's CSS. Next is below.";
+        onComplete();
+      }
+    }
+
+    mount.querySelector("#f-accent").oninput = (e) => { state.accent = e.target.value; update(); };
+    mount.querySelector("#f-size").oninput = (e) => {
+      state.size = Number(e.target.value);
+      mount.querySelector("#size-label").textContent = state.size + "px";
+      update();
+    };
+    mount.querySelector("#reset").onclick = () => {
+      state.accent = d.accent; state.size = d.size;
+      mount.querySelector("#f-accent").value = d.accent;
+      mount.querySelector("#f-size").value = d.size;
+      mount.querySelector("#size-label").textContent = d.size + "px";
+      update();
+    };
+    update();
+  }
+
+  /* ---- Game: Add a Cast Member (data / JS) --------------------------- */
+  function editData(mount, lesson, onComplete) {
+    const d = lesson.editData;
+    let completed = false;
+
+    mount.innerHTML = `
+      <div class="sandbox">
+        <div class="sandbox__edit">
+          <label class="field">The data (a list of projects)
+            <textarea id="f-data" class="code textarea" spellcheck="false" rows="9">${esc(d.start)}</textarea>
+          </label>
+          <button class="btn btn--ghost" id="reset">↺ Reset</button>
+        </div>
+        <div class="sandbox__preview">
+          <p class="muted">The cards the script builds:</p>
+          <iframe class="preview" id="preview" title="Live preview"></iframe>
+        </div>
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+
+    const area = mount.querySelector("#f-data");
+    const frame = mount.querySelector("#preview");
+    const fb = mount.querySelector("#fb");
+
+    function update() {
+      let projects;
+      try {
+        projects = JSON.parse(area.value);
+        if (!Array.isArray(projects)) throw new Error("not a list");
+      } catch (err) {
+        // The same friendly failure the real demo site shows.
+        fb.className = "feedback feedback--nudge";
+        fb.textContent = "🤖 Couldn't read the data yet — check your commas and brackets. (" + err.message + ")";
+        return;
+      }
+      const body = projects
+        .map((p) => `<div class="card"><h3>${esc(p.title || "(no title)")}</h3><p>${esc(p.year || "")}</p></div>`)
+        .join("");
+      frame.srcdoc = previewDoc(body);
+
+      if (projects.length > d.startCount && !completed) {
+        completed = true;
+        fb.className = "feedback feedback--good";
+        fb.textContent = "✓ You added a project by editing data — the script built the card for you. Next is below.";
+        onComplete();
+      } else if (!completed) {
+        fb.className = "feedback";
+        fb.textContent = `Looking good — ${projects.length} projects. Add one more to make it yours.`;
+      }
+    }
+
+    area.oninput = update;
+    mount.querySelector("#reset").onclick = () => { area.value = d.start; update(); };
+    update();
+  }
+
+  /* ---- Game: Which Layer? (classify into bones / skin / muscle) ------ */
+  function classify(mount, lesson, onComplete) {
+    const { layers, items } = lesson.classify;
+    let solved = 0;
+
+    mount.innerHTML = `
+      <div class="classify">
+        ${items
+          .map(
+            (it, i) => `
+          <div class="classify__row" data-i="${i}">
+            <span class="classify__job">${esc(it.text)}</span>
+            <span class="classify__btns">
+              ${layers
+                .map((l) => `<button class="btn btn--ghost" data-layer="${l.id}" data-row="${i}">${esc(l.label)}</button>`)
+                .join("")}
+            </span>
+          </div>`
+          )
+          .join("")}
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const fb = mount.querySelector("#fb");
+
+    mount.querySelectorAll("[data-layer]").forEach((btn) =>
+      (btn.onclick = () => {
+        const row = mount.querySelector(`.classify__row[data-i="${btn.dataset.row}"]`);
+        if (row.classList.contains("classify__row--done")) return;
+        if (btn.dataset.layer === items[btn.dataset.row].layer) {
+          row.classList.add("classify__row--done");
+          btn.classList.add("choice--right");
+          row.querySelectorAll("button").forEach((b) => (b.disabled = true));
+          solved++;
+          fb.className = "feedback feedback--good";
+          fb.textContent =
+            solved === items.length
+              ? "✓ Every job sorted. You can now spot which layer any request belongs to."
+              : `✓ Right — ${solved} of ${items.length} sorted.`;
+          if (solved === items.length) onComplete();
+        } else {
+          btn.classList.add("choice--wrong");
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "Not that layer — is it about structure, look, or something that happens?";
+          setTimeout(() => btn.classList.remove("choice--wrong"), 600);
+        }
+      })
+    );
+  }
+
+  /* ---- Game: Drag to Order (sequencing puzzle) ----------------------- */
+  function dragOrder(mount, lesson, onComplete) {
+    const correct = lesson.order.steps;
+    let seq = shuffle(correct);
+    if (correct.length > 1 && seq.join("|") === correct.join("|")) seq = shuffle(correct);
+    let done = false;
+
+    function render() {
+      mount.innerHTML = `
+        <p>${esc(lesson.order.prompt)}</p>
+        <ul class="steps" id="seq">
+          ${seq
+            .map(
+              (s, i) => `<li class="step" draggable="true" data-i="${i}">
+                <span class="step__handle" aria-hidden="true">⠿</span>
+                <span style="flex:1">${esc(s)}</span>
+                <span style="display:flex;gap:.3rem">
+                  <button class="btn btn--ghost" data-up="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move up">↑</button>
+                  <button class="btn btn--ghost" data-down="${i}" ${i === seq.length - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
+                </span></li>`
+            )
+            .join("")}
+        </ul>
+        <button class="btn" id="check">Check the order</button>
+        <div class="feedback" id="fb" aria-live="polite"></div>
+      `;
+      mount.querySelectorAll("[data-up]").forEach((b) =>
+        (b.onclick = () => { const i = +b.dataset.up; [seq[i - 1], seq[i]] = [seq[i], seq[i - 1]]; render(); })
+      );
+      mount.querySelectorAll("[data-down]").forEach((b) =>
+        (b.onclick = () => { const i = +b.dataset.down; [seq[i + 1], seq[i]] = [seq[i], seq[i + 1]]; render(); })
+      );
+      let dragI = null;
+      mount.querySelectorAll(".step").forEach((li) => {
+        li.addEventListener("dragstart", () => { dragI = +li.dataset.i; });
+        li.addEventListener("dragover", (e) => e.preventDefault());
+        li.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const to = +li.dataset.i;
+          if (dragI === null || dragI === to) return;
+          const [m] = seq.splice(dragI, 1);
+          seq.splice(to, 0, m);
+          render();
+        });
+      });
+      mount.querySelector("#check").onclick = () => {
+        const fb = mount.querySelector("#fb");
+        if (seq.join("|") === correct.join("|")) {
+          fb.className = "feedback feedback--good";
+          fb.textContent = "✓ Perfect order! Next is below.";
+          done = true;
+          onComplete();
+        } else {
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "Not in order yet — rearrange and check again.";
+        }
+      };
+    }
+    render();
+  }
+
+  /* ---- Game: Drag to Bucket (sort cards into bins) ------------------- */
+  function bucket(mount, lesson, onComplete) {
+    const b = lesson.bucket;
+    let cards = shuffle(b.cards.map((c, i) => ({ text: c.text, bin: c.bin, id: i })));
+    const placed = {};
+    b.bins.forEach((bin) => (placed[bin.id] = []));
+    let selected = null;
+    let remaining = cards.length;
+
+    function render() {
+      mount.innerHTML = `
+        ${b.prompt ? `<p>${esc(b.prompt)}</p>` : ""}
+        <div class="tray-cards">
+          ${cards
+            .map((c) => `<button class="drag-card${selected === c.id ? " drag-card--sel" : ""}" data-card="${c.id}" draggable="true">${esc(c.text)}</button>`)
+            .join("") || `<span class="muted">All sorted!</span>`}
+        </div>
+        <div class="buckets">
+          ${b.bins
+            .map(
+              (bin) => `<div class="bucket" data-bin="${bin.id}">
+                <div class="bucket__label">${esc(bin.label)}</div>
+                <div class="bucket__items">${placed[bin.id].map((c) => `<span class="drag-card drag-card--done">${esc(c.text)}</span>`).join("")}</div>
+              </div>`
+            )
+            .join("")}
+        </div>
+        <div class="feedback" id="fb" aria-live="polite">${selected != null ? "Now tap the bin it belongs in." : "Tap a card, then tap its bin."}</div>
+      `;
+      mount.querySelectorAll("[data-card]").forEach((btn) => {
+        btn.onclick = () => { selected = +btn.dataset.card; render(); };
+        btn.addEventListener("dragstart", () => { selected = +btn.dataset.card; });
+      });
+      mount.querySelectorAll("[data-bin]").forEach((bin) => {
+        const place = () => {
+          if (selected == null) return;
+          const card = cards.find((c) => c.id === selected);
+          if (!card) return;
+          if (card.bin === bin.dataset.bin) {
+            placed[bin.dataset.bin].push(card);
+            cards = cards.filter((c) => c.id !== card.id);
+            selected = null;
+            remaining--;
+            const finished = remaining === 0;
+            render();
+            const f = mount.querySelector("#fb");
+            f.className = "feedback feedback--good";
+            f.textContent = finished ? "✓ All sorted correctly! Next is below." : "✓ Correct — keep going.";
+            if (finished) onComplete();
+          } else {
+            const f = mount.querySelector("#fb");
+            f.className = "feedback feedback--nudge";
+            f.textContent = "Not that bin — read it again and try another.";
+          }
+        };
+        bin.onclick = place;
+        bin.addEventListener("dragover", (e) => e.preventDefault());
+        bin.addEventListener("drop", (e) => { e.preventDefault(); place(); });
+      });
+    }
+    render();
+  }
+
+  /* ---- Game: Spot the Fake (tap the false statement) ----------------- */
+  function spotFake(mount, lesson, onComplete) {
+    const rounds = lesson.spotFake.rounds;
+    let solved = 0;
+    mount.innerHTML = `<div id="rounds"></div>`;
+    const wrap = mount.querySelector("#rounds");
+    rounds.forEach((r) => {
+      const block = document.createElement("div");
+      block.style.marginBottom = "1.8rem";
+      block.innerHTML = `<p style="color:var(--ink);font-weight:600">${esc(r.prompt || "Tap the statement that's NOT true:")}</p>`;
+      const fb = document.createElement("div");
+      fb.className = "feedback";
+      r.statements.forEach((s, i) => {
+        const btn = document.createElement("button");
+        btn.className = "choice";
+        btn.innerHTML = s;
+        btn.onclick = () => {
+          if (i === r.fake) {
+            btn.classList.add("choice--right");
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ " + r.why;
+            [...block.querySelectorAll(".choice")].forEach((x) => (x.disabled = true));
+            solved++;
+            if (solved === rounds.length) onComplete();
+          } else {
+            btn.classList.add("choice--wrong");
+            fb.className = "feedback feedback--nudge";
+            fb.textContent = "That one's actually true — look for the odd one out.";
+          }
+        };
+        block.appendChild(btn);
+      });
+      block.appendChild(fb);
+      wrap.appendChild(block);
+    });
+  }
+
+  /* ---- Game: Spot the Bug (tap the wrong line) ----------------------- */
+  function spotBug(mount, lesson, onComplete) {
+    const sb = lesson.spotBug;
+    mount.innerHTML = `
+      <p>${esc(sb.prompt)}</p>
+      <div class="code codelines">
+        ${sb.lines.map((ln, i) => `<button class="codeline" data-i="${i}">${esc(ln)}</button>`).join("")}
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const fb = mount.querySelector("#fb");
+    mount.querySelectorAll(".codeline").forEach((b) =>
+      (b.onclick = () => {
+        if (+b.dataset.i === sb.bug) {
+          b.classList.add("codeline--bug");
+          fb.className = "feedback feedback--good";
+          fb.textContent = "✓ " + sb.why;
+          mount.querySelectorAll(".codeline").forEach((x) => (x.disabled = true));
+          onComplete();
+        } else {
+          b.classList.add("codeline--ok");
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "That line's fine — keep hunting for the one that's wrong.";
+          setTimeout(() => b.classList.remove("codeline--ok"), 600);
+        }
+      })
+    );
+  }
+
+  /* ---- Game: Fill the Gap (drop the missing piece) ------------------- */
+  function fillGap(mount, lesson, onComplete) {
+    const rounds = lesson.fillGap.rounds;
+    let solved = 0;
+    mount.innerHTML = `<div id="rounds"></div>`;
+    const wrap = mount.querySelector("#rounds");
+    rounds.forEach((r, ri) => {
+      const block = document.createElement("div");
+      block.style.marginBottom = "1.8rem";
+      block.innerHTML = `
+        ${r.intro ? `<p>${r.intro}</p>` : ""}
+        <pre class="code"><span>${esc(r.before)}</span><span class="gap" id="gap-${ri}">_____</span><span>${esc(r.after)}</span></pre>
+        <p class="muted">Tap the piece that fills the gap:</p>
+        <div class="ingredients" id="opts-${ri}">
+          ${shuffle(r.options.map((o, i) => ({ o, i })))
+            .map((x) => `<button class="btn btn--ghost" data-i="${x.i}">${esc(x.o)}</button>`)
+            .join("")}
+        </div>
+      `;
+      const fb = document.createElement("div");
+      fb.className = "feedback";
+      wrap.appendChild(block);
+      block.appendChild(fb);
+      block.querySelectorAll(`#opts-${ri} [data-i]`).forEach((b) =>
+        (b.onclick = () => {
+          const i = +b.dataset.i;
+          const gap = block.querySelector(`#gap-${ri}`);
+          if (i === r.answer) {
+            gap.textContent = r.options[i];
+            gap.classList.add("gap--filled");
+            block.querySelectorAll(`#opts-${ri} .btn`).forEach((x) => (x.disabled = true));
+            b.classList.add("choice--right");
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ That fits.";
+            solved++;
+            if (solved === rounds.length) onComplete();
+          } else {
+            b.classList.add("choice--wrong");
+            fb.className = "feedback feedback--nudge";
+            fb.textContent = "Not quite — " + (r.nudge || "try another piece.");
+          }
+        })
+      );
+    });
+  }
+
+  /* ---- Game: Memory Match (flip pairs) ------------------------------- */
+  function memoryMatch(mount, lesson, onComplete) {
+    const pairs = lesson.match.pairs;
+    let cards = [];
+    pairs.forEach((p, i) => {
+      cards.push({ pid: i, text: p.a });
+      cards.push({ pid: i, text: p.b });
+    });
+    cards = shuffle(cards).map((c, idx) => ({ ...c, idx }));
+    let first = null;
+    let lock = false;
+    let matched = 0;
+
+    mount.innerHTML = `
+      <p class="muted">Match each term to its meaning. Flip two cards.</p>
+      <div class="memory">
+        ${cards
+          .map((c) => `<button class="mcard" data-idx="${c.idx}"><span class="mcard__front" aria-hidden="true">?</span><span class="mcard__back">${esc(c.text)}</span></button>`)
+          .join("")}
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const fb = mount.querySelector("#fb");
+    mount.querySelectorAll(".mcard").forEach((btn) =>
+      (btn.onclick = () => {
+        if (lock) return;
+        if (btn.classList.contains("mcard--up") || btn.classList.contains("mcard--done")) return;
+        const idx = +btn.dataset.idx;
+        const card = cards.find((c) => c.idx === idx);
+        btn.classList.add("mcard--up");
+        if (first == null) {
+          first = { idx, el: btn, card };
+        } else if (first.card.pid === card.pid && first.idx !== idx) {
+          btn.classList.add("mcard--done");
+          first.el.classList.add("mcard--done");
+          matched++;
+          first = null;
+          fb.className = "feedback feedback--good";
+          fb.textContent = matched === pairs.length ? "✓ All matched! Next is below." : `✓ Matched ${matched} of ${pairs.length}.`;
+          if (matched === pairs.length) onComplete();
+        } else {
+          lock = true;
+          fb.className = "feedback";
+          fb.textContent = "Not a pair — try again.";
+          const f = first;
+          setTimeout(() => {
+            btn.classList.remove("mcard--up");
+            f.el.classList.remove("mcard--up");
+            first = null;
+            lock = false;
+          }, 850);
+        }
+      })
+    );
+  }
+
+  /* ---- Game: Direct the Scene (branching chat) ----------------------- */
+  function branchChat(mount, lesson, onComplete) {
+    const beats = lesson.scene.beats;
+    let bi = 0;
+    let done = false;
+    const log = [];
+    const pushAi = (arr) => arr.forEach((t) => log.push({ who: "ai", text: t }));
+    pushAi(beats[0].ai);
+
+    function render() {
+      const beat = beats[bi];
+      mount.innerHTML = `
+        <div class="chat scene" id="scene">
+          ${log
+            .map(
+              (m) => `<div class="${m.who === "ai" ? "chat__ai" : "chat__you"}" style="max-width:100%">
+                <div class="chat__role">${m.who === "ai" ? "🎭 Stagehand" : "You"}</div>${m.text}</div>`
+            )
+            .join("")}
+        </div>
+        ${
+          done
+            ? `<div class="feedback feedback--good">✓ Scene directed — nicely done. Next is below.</div>`
+            : `<p class="muted">${esc(beat.prompt || "Your note to the Stagehand:")}</p>
+               <div id="opts">${beat.options.map((o, i) => `<button class="choice" data-i="${i}">${esc(o.label)}</button>`).join("")}</div>`
+        }
+      `;
+      if (!done) {
+        mount.querySelectorAll("#opts [data-i]").forEach((b) =>
+          (b.onclick = () => {
+            const opt = beat.options[+b.dataset.i];
+            log.push({ who: "you", text: esc(opt.label) });
+            pushAi([opt.reply]);
+            if (opt.good) {
+              bi++;
+              if (bi >= beats.length) {
+                done = true;
+                onComplete();
+              } else {
+                pushAi(beats[bi].ai);
+              }
+            }
+            render();
+          })
+        );
+      }
+      const sc = mount.querySelector("#scene");
+      if (sc) sc.scrollTop = sc.scrollHeight;
+    }
+    render();
+  }
+
+  /* ---- Game: Fix It (walk the debugging loop) ------------------------ */
+  function fixIt(mount, lesson, onComplete) {
+    const f = lesson.fix;
+    const fixes = shuffle(f.fixes);
+    let done = false;
+
+    mount.innerHTML = `
+      <p style="font-weight:600;color:var(--ink)">The Stagehand's code broke. Let's walk the loop together.</p>
+
+      <p class="muted">Step 1 — read the error (it tells you what, and where):</p>
+      <pre class="code">${esc(f.brokenCode)}</pre>
+      <div class="compiler__output"><span class="oops">⚠ ${esc(f.error)}</span></div>
+
+      <p class="muted" style="margin-top:1rem">Step 2 — ask for help with the exact error:</p>
+      <button class="btn btn--ghost" id="ask">🎭 Ask the Stagehand</button>
+      <div class="chat" id="help" hidden style="margin-top:.7rem">
+        ${f.help
+          .map((h) => `<div class="chat__ai" style="max-width:100%"><div class="chat__role">🎭 Stagehand</div>${h}</div>`)
+          .join("")}
+      </div>
+
+      <p class="muted" style="margin-top:1rem">Step 3 — pick the fix, then we'll re-run it:</p>
+      <div id="fixes">
+        ${fixes
+          .map(
+            (fx, i) =>
+              `<button class="choice" data-i="${i}" style="font-family:var(--mono);white-space:pre-wrap">${esc(fx.code)}</button>`
+          )
+          .join("")}
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+      <div class="compiler__output" id="out" hidden></div>
+    `;
+
+    const fb = mount.querySelector("#fb");
+    mount.querySelector("#ask").onclick = () => {
+      const h = mount.querySelector("#help");
+      h.hidden = !h.hidden;
+    };
+
+    mount.querySelectorAll("#fixes [data-i]").forEach((b) =>
+      (b.onclick = () => {
+        if (done) return;
+        const fx = fixes[Number(b.dataset.i)];
+        if (fx.right) {
+          b.classList.add("choice--right");
+          mount.querySelectorAll("#fixes .choice").forEach((x) => (x.disabled = true));
+          fb.className = "feedback feedback--good";
+          fb.textContent = "Re-running…";
+          const out = mount.querySelector("#out");
+          out.hidden = false;
+          out.innerHTML = `<span class="ok">${esc(f.success)}</span>`;
+          done = true;
+          onComplete();
+        } else {
+          b.classList.add("choice--wrong");
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "That won't fix it — re-read the error and the Stagehand's hint, then try another.";
+        }
+      })
+    );
+  }
+
+  /* ---- Game: Predict the Output (trace, then run) -------------------- */
+  function predictOutput(mount, lesson, onComplete) {
+    const rounds = lesson.rounds;
+    let correct = 0;
+    mount.innerHTML = `<div id="rounds"></div>`;
+    const wrap = mount.querySelector("#rounds");
+
+    rounds.forEach((round) => {
+      const block = document.createElement("div");
+      block.style.marginBottom = "1.6rem";
+      block.innerHTML = `
+        <pre class="code">${esc(round.code)}</pre>
+        <p style="color:var(--ink);font-weight:600">${esc(round.question)}</p>
+      `;
+      const fb = document.createElement("div");
+      fb.className = "feedback";
+      const out = document.createElement("div");
+      out.className = "compiler__output";
+      out.hidden = true;
+
+      round.options.forEach((opt, oi) => {
+        const b = document.createElement("button");
+        b.className = "choice";
+        b.textContent = opt;
+        b.onclick = () => {
+          if (oi === round.answer) {
+            b.classList.add("choice--right");
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ Correct — you traced it.";
+            [...block.querySelectorAll(".choice")].forEach((x) => (x.disabled = true));
+            out.hidden = false;
+            out.innerHTML = `<span class="ok">▶ Output: ${esc(round.output)}</span>`;
+            correct++;
+            if (correct === rounds.length) onComplete();
+          } else {
+            b.classList.add("choice--wrong");
+            fb.className = "feedback feedback--nudge";
+            fb.textContent = "Not quite — " + round.nudge;
+          }
+        };
+        block.appendChild(b);
+      });
+      block.appendChild(fb);
+      block.appendChild(out);
+      wrap.appendChild(block);
+    });
+  }
+
+  /* ---- Game: Judge the Claim (confident isn't correct) --------------- */
+  function judgeClaim(mount, lesson, onComplete) {
+    const rounds = lesson.rounds;
+    let correct = 0;
+    mount.innerHTML = `<div id="rounds"></div>`;
+    const wrap = mount.querySelector("#rounds");
+
+    rounds.forEach((round) => {
+      const block = document.createElement("div");
+      block.style.marginBottom = "1.8rem";
+      block.innerHTML = `
+        <pre class="code">${esc(round.code)}</pre>
+        <div class="chat">
+          <div class="chat__ai" style="max-width:100%">
+            <div class="chat__role">🎭 Stagehand says (confidently)</div>${esc(round.claim)}
+          </div>
+        </div>
+        <p style="color:var(--ink);font-weight:600;margin-top:.8rem">Is that actually true? Read the code.</p>
+      `;
+      const fb = document.createElement("div");
+      fb.className = "feedback";
+
+      [
+        { label: "✓ True", val: true },
+        { label: "✗ Not true", val: false },
+      ].forEach((o) => {
+        const b = document.createElement("button");
+        b.className = "choice";
+        b.textContent = o.label;
+        b.onclick = () => {
+          if (o.val === round.isTrue) {
+            b.classList.add("choice--right");
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ " + round.why;
+            [...block.querySelectorAll(".choice")].forEach((x) => (x.disabled = true));
+            correct++;
+            if (correct === rounds.length) onComplete();
+          } else {
+            b.classList.add("choice--wrong");
+            fb.className = "feedback feedback--nudge";
+            fb.textContent = "Read the code again — does it really do that? Don't be swayed by the confident tone.";
+          }
+        };
+        block.appendChild(b);
+      });
+      block.appendChild(fb);
+      wrap.appendChild(block);
+    });
+  }
+
+  /* ---- Game: Prompt Lab (vague vs. specific) ------------------------- */
+  function promptLab(mount, lesson, onComplete) {
+    const pl = lesson.promptLab;
+    let done = false;
+
+    mount.innerHTML = `
+      <p>Task: <strong>${esc(pl.task)}</strong></p>
+      <div class="promptlab">
+        ${pl.prompts
+          .map(
+            (p, i) => `
+          <div class="card">
+            <div class="chat__role">${esc(p.label)} prompt</div>
+            <div class="chat__you" style="max-width:100%">${esc(p.text)}</div>
+            <button class="btn btn--ghost" data-reveal="${i}" style="margin-top:.7rem">Reveal the Stagehand's reply</button>
+            <div class="chat" id="reply-${i}" style="margin-top:.7rem" hidden>
+              ${p.reply.map((r) => `<div class="chat__ai" style="max-width:100%">${r}</div>`).join("")}
+            </div>
+          </div>`
+          )
+          .join("")}
+      </div>
+      <p style="font-weight:600;color:var(--ink);margin-top:1.2rem">Which prompt would you rather have sent?</p>
+      <div id="picks">
+        ${pl.prompts
+          .map((p, i) => `<button class="choice" data-pick="${i}"><strong>${esc(p.label)}:</strong> ${esc(p.text)}</button>`)
+          .join("")}
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const fb = mount.querySelector("#fb");
+
+    mount.querySelectorAll("[data-reveal]").forEach((b) =>
+      (b.onclick = () => {
+        const panel = mount.querySelector(`#reply-${b.dataset.reveal}`);
+        panel.hidden = !panel.hidden;
+        b.textContent = panel.hidden ? "Reveal the Stagehand's reply" : "Hide the reply";
+      })
+    );
+
+    mount.querySelectorAll("[data-pick]").forEach((b) =>
+      (b.onclick = () => {
+        if (done) return;
+        if (Number(b.dataset.pick) === pl.best) {
+          b.classList.add("choice--right");
+          fb.className = "feedback feedback--good";
+          fb.innerHTML = "✓ " + pl.why + " Next is below.";
+          done = true;
+          onComplete();
+        } else {
+          b.classList.add("choice--wrong");
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "Look again — which one leaves the Stagehand less to guess? Reveal both replies and compare.";
+        }
+      })
+    );
+  }
+
+  /* ---- Game: Build a Better Prompt (give it context) ----------------- */
+  function buildPrompt(mount, lesson, onComplete) {
+    const bp = lesson.buildPrompt;
+    const goodCount = bp.additions.filter((a) => a.good).length;
+    const picked = [];
+    let done = false;
+
+    mount.innerHTML = `
+      <p class="muted">Your prompt so far:</p>
+      <pre class="code" id="prompt-view"></pre>
+      <p style="font-weight:600;color:var(--ink)">Tap the details that would actually help:</p>
+      <div class="ingredients">
+        ${bp.additions
+          .map((a, i) => `<button class="btn btn--ghost" data-i="${i}">+ ${esc(a.text)}</button>`)
+          .join("")}
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const view = mount.querySelector("#prompt-view");
+    const fb = mount.querySelector("#fb");
+
+    function update() {
+      view.textContent =
+        bp.base +
+        (picked.length ? "\n\nHere's what you need to know:\n" + picked.map((t) => "- " + t).join("\n") : "");
+    }
+
+    mount.querySelectorAll("[data-i]").forEach((b) =>
+      (b.onclick = () => {
+        const add = bp.additions[Number(b.dataset.i)];
+        if (add.good) {
+          if (b.disabled) return;
+          b.disabled = true;
+          b.classList.add("choice--right");
+          picked.push(add.text);
+          update();
+          if (picked.length === goodCount) {
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ Now the Stagehand has what it needs to actually help — not guess. Next is below.";
+            done = true;
+            onComplete();
+          } else {
+            fb.className = "feedback";
+            fb.textContent = `Added — ${picked.length} of ${goodCount} helpful details.`;
+          }
+        } else {
+          b.classList.add("choice--wrong");
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "That won't help — the Stagehand doesn't need it. Stick to details about the problem.";
+          setTimeout(() => b.classList.remove("choice--wrong"), 700);
+        }
+      })
+    );
+    update();
+  }
+
+  /* ---- Game: Human Compiler ------------------------------------------ */
+  function humanCompiler(mount, lesson, onComplete) {
+    let tray = shuffle(lesson.recipe);
+    let seq = [];
+
+    function render() {
+      mount.innerHTML = `
+        <div class="compiler">
+          <p><strong>Goal:</strong> ${esc(lesson.goal)}. Build the instructions, then run the robot.
+             It follows your steps <em>literally</em>.</p>
+
+          <div>
+            <h2 style="margin-top:0">Available steps</h2>
+            <ul class="steps tray" id="tray">
+              ${tray
+                .map(
+                  (s) =>
+                    `<li class="step"><span class="step__handle" aria-hidden="true">＋</span>
+                      ${esc(s.text)}
+                      <button class="btn btn--ghost" data-add="${s.id}">Add</button></li>`
+                )
+                .join("") || `<li class="step">All steps added.</li>`}
+            </ul>
+          </div>
+
+          <div>
+            <h2>Your instructions (in order)</h2>
+            <ul class="steps" id="seq">
+              ${
+                seq
+                  .map(
+                    (s, i) =>
+                      `<li class="step"><span class="step__handle" aria-hidden="true">${i + 1}</span>
+                        ${esc(s.text)}
+                        <span style="margin-left:auto;display:flex;gap:.3rem">
+                          <button class="btn btn--ghost" data-up="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move up">↑</button>
+                          <button class="btn btn--ghost" data-down="${i}" ${i === seq.length - 1 ? "disabled" : ""} aria-label="Move down">↓</button>
+                          <button class="btn btn--ghost" data-remove="${i}" aria-label="Remove">✕</button>
+                        </span></li>`
+                  )
+                  .join("") || `<li class="step">Add steps from above to start.</li>`
+              }
+            </ul>
+          </div>
+
+          <button class="btn" id="run" ${seq.length ? "" : "disabled"}>▶ Run the robot</button>
+          <div class="compiler__output" id="out" aria-live="polite">Awaiting instructions…</div>
+        </div>
+      `;
+
+      mount.querySelectorAll("[data-add]").forEach((b) =>
+        (b.onclick = () => {
+          const s = tray.find((x) => x.id === b.dataset.add);
+          seq.push(s);
+          tray = tray.filter((x) => x.id !== s.id);
+          render();
+        })
+      );
+      mount.querySelectorAll("[data-remove]").forEach((b) =>
+        (b.onclick = () => {
+          tray.push(seq[b.dataset.remove]);
+          seq.splice(b.dataset.remove, 1);
+          render();
+        })
+      );
+      mount.querySelectorAll("[data-up]").forEach((b) =>
+        (b.onclick = () => {
+          const i = Number(b.dataset.up);
+          [seq[i - 1], seq[i]] = [seq[i], seq[i - 1]];
+          render();
+        })
+      );
+      mount.querySelectorAll("[data-down]").forEach((b) =>
+        (b.onclick = () => {
+          const i = Number(b.dataset.down);
+          [seq[i + 1], seq[i]] = [seq[i], seq[i + 1]];
+          render();
+        })
+      );
+      const runBtn = mount.querySelector("#run");
+      if (runBtn) runBtn.onclick = run;
+    }
+
+    function run() {
+      const out = mount.querySelector("#out");
+      const correct = lesson.recipe.map((r) => r.id);
+      const have = seq.map((s) => s.id);
+
+      // 1) Missing a step? Report the first missing one, literally.
+      const missing = correct.find((id) => !have.includes(id));
+      if (missing) {
+        out.innerHTML = `<span class="oops">${esc(lesson.literalFails[missing])}</span>\n\nTry adding the missing step.`;
+        return;
+      }
+      // 2) All present — is the order right?
+      const wrongAt = have.findIndex((id, i) => id !== correct[i]);
+      if (wrongAt !== -1) {
+        out.innerHTML = `<span class="oops">🤖 Follows your order exactly: tries to "${esc(
+          seq[wrongAt].text.toLowerCase()
+        )}" too soon — that step can't work yet.</span>\n\nReorder and run again.`;
+        return;
+      }
+      // 3) Complete and correct.
+      out.innerHTML = `<span class="ok">${esc(lesson.success)}</span>`;
+      onComplete();
+    }
+
+    render();
+  }
+
+  /* ---- Game: Backstage Tour ------------------------------------------ */
+  function backstageTour(mount, lesson, onComplete) {
+    const viewed = new Set();
+
+    mount.innerHTML = `
+      <div class="filetree" id="tree">
+        ${lesson.files
+          .map(
+            (f) =>
+              `<button class="filetree__item" data-file="${esc(f.name)}">
+                <span aria-hidden="true">📄</span>
+                <span class="filetree__name">${esc(f.name)}</span>
+                <span style="margin-left:auto;color:var(--ink-soft)">peek →</span>
+              </button>`
+          )
+          .join("")}
+      </div>
+      <div id="peek" style="margin-top:1.2rem" aria-live="polite"></div>
+      <p id="tour-progress" style="margin-top:1rem"></p>
+    `;
+
+    function progressNote() {
+      const el = mount.querySelector("#tour-progress");
+      el.textContent = `Peeked at ${viewed.size} of ${lesson.files.length} files.`;
+    }
+
+    mount.querySelectorAll("[data-file]").forEach((btn) =>
+      (btn.onclick = () => {
+        const f = lesson.files.find((x) => x.name === btn.dataset.file);
+        viewed.add(f.name);
+        mount.querySelector("#peek").innerHTML = `
+          <div class="card">
+            <h2 style="margin-top:0">${esc(f.name)}</h2>
+            <p>${esc(f.role)}</p>
+            <pre class="code">${esc(f.peek)}</pre>
+            <div class="cue"><strong>Notice:</strong> ${esc(f.note)}</div>
+          </div>`;
+        progressNote();
+        if (viewed.size === lesson.files.length) onComplete();
+      })
+    );
+    progressNote();
+  }
+
+  /* ---- Game: Match the File to the Job ------------------------------- */
+  function matchFiles(mount, lesson, onComplete) {
+    const jobs = shuffle(lesson.pairs.map((p) => ({ id: p.jobId, text: p.job })));
+
+    mount.innerHTML = `
+      <div class="match">
+        ${lesson.pairs
+          .map(
+            (p) => `
+          <div class="match__row">
+            <span class="filetree__name">${esc(p.file)}</span>
+            <select class="choice" data-correct="${p.jobId}" aria-label="Job for ${esc(p.file)}">
+              <option value="">— pick its job —</option>
+              ${jobs.map((j) => `<option value="${j.id}">${esc(j.text)}</option>`).join("")}
+            </select>
+          </div>`
+          )
+          .join("")}
+      </div>
+      <div class="feedback" id="match-fb" aria-live="polite"></div>
+    `;
+
+    const selects = [...mount.querySelectorAll("select")];
+    const fb = mount.querySelector("#match-fb");
+
+    function check() {
+      const filled = selects.every((s) => s.value);
+      if (!filled) {
+        fb.className = "feedback";
+        fb.textContent = "";
+        return;
+      }
+      const allRight = selects.every((s) => s.value === s.dataset.correct);
+      if (allRight) {
+        fb.className = "feedback feedback--good";
+        fb.textContent = "✓ Spot on — that's how a page is split up.";
+        selects.forEach((s) => (s.disabled = true));
+        onComplete();
+      } else {
+        fb.className = "feedback feedback--nudge";
+        fb.textContent = "Close — one or more don't match yet. Think bones, skin, moving bits.";
+      }
+    }
+    selects.forEach((s) => (s.onchange = check));
+  }
+
+  /* ---- Curtain call (recap + quiz + badge) --------------------------- */
+  function renderCurtain(moduleId) {
+    const m = findModule(moduleId);
+    if (!m || !m.curtainCall) return go("/map");
+    const cc = m.curtainCall;
+
+    stage.innerHTML = `
+      <p class="crumbs"><a href="#/map">Map</a> › Act ${m.id} › Curtain Call</p>
+      <h1>🎬 Curtain Call — ${esc(m.title)}</h1>
+      <div class="card">
+        <h2 style="margin-top:0">What you've got</h2>
+        ${cc.codeIntro ? `<pre class="code">${esc(cc.codeIntro)}</pre>` : ""}
+        <ul>${cc.recap.map((r) => `<li>${r}</li>`).join("")}</ul>
+      </div>
+      <div class="card">
+        <h2 style="margin-top:0">${cc.game ? "One last challenge" : "Quick check (no fail state)"}</h2>
+        <div id="challenge"></div>
+      </div>
+      <div id="reward" hidden></div>
+    `;
+
+    // A Curtain Call can end with an interactive game (cc.game) or a quick quiz.
+    if (cc.game) {
+      (GAMES[cc.game] || (() => {}))(document.getElementById("challenge"), cc, showReward);
+    } else {
+      const quiz = document.getElementById("challenge");
+      let correctCount = 0;
+      cc.quiz.forEach((item) => {
+        const block = document.createElement("div");
+        block.style.marginBottom = "1.4rem";
+        block.innerHTML = `
+          ${item.code ? `<pre class="code">${esc(item.code)}</pre>` : ""}
+          <p style="color:var(--ink);font-weight:600">${item.q}</p>`;
+        const fb = document.createElement("div");
+        fb.className = "feedback";
+
+        item.options.forEach((opt, oi) => {
+          const b = document.createElement("button");
+          b.className = "choice";
+          b.textContent = opt;
+          b.onclick = () => {
+            if (oi === item.answer) {
+              b.classList.add("choice--right");
+              fb.className = "feedback feedback--good";
+              fb.textContent = "✓ Correct";
+              [...block.querySelectorAll("button")].forEach((x) => (x.disabled = true));
+              correctCount++;
+              if (correctCount === cc.quiz.length) showReward();
+            } else {
+              b.classList.add("choice--wrong");
+              fb.className = "feedback feedback--nudge";
+              fb.textContent = "Not quite — " + item.nudge;
+            }
+          };
+          block.appendChild(b);
+        });
+        block.appendChild(fb);
+        quiz.appendChild(block);
+      });
+    }
+
+    function showReward() {
+      const reward = document.getElementById("reward");
+      reward.hidden = false;
+      const finished = courseComplete();
+      let html = `
+        <div class="badge">
+          <div class="badge__star">${cc.star}</div>
+          <h2>${esc(cc.badge)}</h2>
+          <p class="lead">${esc(cc.next)}</p>
+          ${finished ? "" : `<button class="btn btn--lg" id="back-map">Back to the map →</button>`}
+        </div>`;
+      if (finished) {
+        html += `
+          <div class="finale-banner" style="margin-top:1.2rem">
+            <div class="finale__star">🎭🎓</div>
+            <h2>You've completed Backstage Pass!</h2>
+            <p class="lead">From "what even is this?" to reading, changing, directing, judging and fixing code — safely. Take a bow. 👏</p>
+            <div class="mapbar__badges" style="justify-content:center">
+              ${earnedBadges().map((b) => `<span class="badge-chip">${b.star} ${esc(b.badge)}</span>`).join("")}
+            </div>
+            <div class="finale__actions">
+              <button class="btn btn--lg" id="back-map">Back to the map →</button>
+              <button class="btn btn--ghost" id="replay">↺ Replay from the start</button>
+            </div>
+          </div>`;
+      }
+      reward.innerHTML = html;
+      reward.scrollIntoView({ behavior: "smooth" });
+      document.getElementById("back-map").onclick = () => go("/map");
+      const replay = document.getElementById("replay");
+      if (replay) replay.onclick = resetProgress;
+      if (finished) celebrate();
+    }
+  }
+
+  /* ---- Jargon Buster -------------------------------------------------- */
+  function setupGlossary() {
+    const panel = document.getElementById("glossary");
+    const scrim = document.getElementById("glossary-scrim");
+    const toggle = document.getElementById("glossary-toggle");
+    const list = document.getElementById("glossary-list");
+    const search = document.getElementById("glossary-search");
+
+    function render(filter = "") {
+      const f = filter.toLowerCase();
+      list.innerHTML = COURSE.glossary
+        .filter((g) => g.term.toLowerCase().includes(f) || g.def.toLowerCase().includes(f))
+        .map((g) => `<dt>${esc(g.term)}</dt><dd>${esc(g.def)}</dd>`)
+        .join("") || `<dd>No matches.</dd>`;
+    }
+    function open() {
+      render();
+      panel.classList.add("glossary--open");
+      panel.setAttribute("aria-hidden", "false");
+      toggle.setAttribute("aria-expanded", "true");
+      scrim.hidden = false;
+      search.focus();
+    }
+    function close() {
+      panel.classList.remove("glossary--open");
+      panel.setAttribute("aria-hidden", "true");
+      toggle.setAttribute("aria-expanded", "false");
+      scrim.hidden = true;
+    }
+
+    toggle.onclick = () =>
+      panel.classList.contains("glossary--open") ? close() : open();
+    document.getElementById("glossary-close").onclick = close;
+    scrim.onclick = close;
+    search.oninput = () => render(search.value);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+    render();
+  }
+
+  /* ---- Reset ---------------------------------------------------------- */
+  function resetProgress() {
+    if (confirm("Reset all progress on this device? Nothing else is affected.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      renderLights();
+      go("/");
+      route();
+    }
+  }
+  document.getElementById("reset-progress").onclick = resetProgress;
+
+  /* All playable games, by the name lessons/curtains refer to them by. */
+  const GAMES = {
+    humanCompiler, backstageTour, matchFiles, spotBlock, buildSetlist, choose,
+    editHtml, editCss, editData, classify, promptLab, buildPrompt,
+    predictOutput, judgeClaim, fixIt,
+    dragOrder, bucket, spotFake, spotBug, fillGap, memoryMatch, branchChat,
+  };
+
+  /* ---- Boot ----------------------------------------------------------- */
+  window.addEventListener("hashchange", route);
+  setupGlossary();
+  renderLights();
+  route();
+})();
+</script>

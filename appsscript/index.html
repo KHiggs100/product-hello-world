@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Styles are inlined from theme.html (Apps Script can't link an external .css) -->
+    <?!= include('theme'); ?>
+  </head>
+  <body>
+    <!-- Skip link for keyboard / screen-reader users -->
+    <a class="skip-link" href="#stage">Skip to content</a>
+
+    <header class="topbar">
+      <div class="topbar__inner">
+        <a class="brand" href="#/" aria-label="Backstage Pass home">
+          <span class="brand__mark" aria-hidden="true">🎭</span>
+          <span class="brand__name">Backstage&nbsp;Pass</span>
+        </a>
+
+        <!-- Stage-lights progress bar (filled in by app.js) -->
+        <div
+          class="lights"
+          id="lights"
+          role="progressbar"
+          aria-label="Course progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        ></div>
+
+        <div class="topbar__actions">
+          <button class="btn btn--ghost" id="glossary-toggle" aria-expanded="false" aria-controls="glossary">
+            Jargon&nbsp;Buster
+          </button>
+          <button class="btn btn--ghost btn--danger" id="reset-progress">
+            Reset
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Everything below is rendered by app.js into #stage -->
+    <main id="stage" class="stage" tabindex="-1"></main>
+
+    <!-- Jargon Buster slide-out panel (content injected by app.js) -->
+    <aside class="glossary" id="glossary" aria-hidden="true" aria-label="Jargon Buster glossary">
+      <div class="glossary__head">
+        <h2>Jargon Buster</h2>
+        <button class="btn btn--ghost" id="glossary-close" aria-label="Close glossary">✕</button>
+      </div>
+      <input
+        type="search"
+        id="glossary-search"
+        class="glossary__search"
+        placeholder="Search a word…"
+        aria-label="Search the glossary"
+      />
+      <dl class="glossary__list" id="glossary-list"></dl>
+    </aside>
+    <div class="glossary__scrim" id="glossary-scrim" hidden></div>
+
+    <footer class="footer">
+      <p>Backstage Pass — a place to learn, where nothing you click can break.</p>
+    </footer>
+
+    <!-- Data first (content.html defines COURSE), then the engine (app.html uses it).
+         Order matters: content MUST come before app. -->
+    <?!= include('content'); ?>
+    <?!= include('app'); ?>
+  </body>
+</html>
