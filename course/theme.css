@@ -657,3 +657,155 @@ code {
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* =========================================================================
+   TIER 2 (Stage Crew) games — Modules 7–13
+   ========================================================================= */
+
+/* Safe terminal (Module 7) */
+.term {
+  background: #0e0c15;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+}
+.term__log { display: flex; flex-direction: column; gap: 0.15rem; max-height: 240px; overflow-y: auto; margin-bottom: 0.5rem; }
+.term__line { white-space: pre-wrap; }
+.term__out { color: var(--go); white-space: pre-wrap; }
+.term__out--err { color: var(--velvet); }
+.term__dollar { color: var(--spotlight); font-weight: 700; }
+.term__form { display: flex; align-items: center; gap: 0.5rem; border-top: 1px solid var(--line); padding-top: 0.5rem; }
+.term__input { flex: 1; background: transparent; border: none; color: var(--ink); font: inherit; outline: none; }
+
+/* Save-point timeline (Module 8) */
+.timeline { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+.timeline__list { display: flex; flex-direction: column; gap: 0.5rem; }
+.tl-snap {
+  display: flex; gap: 0.6rem; align-items: flex-start;
+  text-align: left;
+  background: var(--stage-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.8rem;
+  color: var(--ink); font: inherit; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.tl-snap:hover { border-color: var(--spotlight); }
+.tl-snap--current { border-color: var(--spotlight); box-shadow: 0 0 0 2px rgba(245, 196, 81, 0.3); }
+.tl-snap--broken { border-color: var(--velvet); }
+.tl-snap__dot { color: var(--spotlight); }
+.tl-stage { min-height: 3rem; }
+
+/* Review the change set (Module 11) */
+.code.diff { line-height: 1.5; }
+.code.diff .diff-line {
+  display: block; width: 100%; text-align: left;
+  font: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--spotlight-2);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.code.diff .diff-line:hover { background: rgba(245, 196, 81, 0.12); }
+.code.diff .diff-ctx { display: block; color: var(--ink-soft); padding: 0.15rem 0.45rem; }
+
+/* Simulated console (Module 12) */
+.console {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  background: #0e0c15;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem;
+}
+.console-line {
+  text-align: left;
+  font-family: var(--mono); font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  color: var(--ink); cursor: pointer;
+}
+.console-line:hover { border-color: var(--spotlight); }
+.console-line__tag { text-transform: uppercase; font-size: 0.65rem; font-weight: 800; opacity: 0.7; margin-right: 0.5rem; }
+.console-line--error { color: var(--velvet); }
+.console-line--warn { color: var(--spotlight-2); }
+.console-line--log { color: var(--ink-soft); }
+
+@media (max-width: 720px) {
+  .timeline { grid-template-columns: 1fr; }
+}
+
+/* Section (tier) tiles on the journey landing */
+.section-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+  margin-top: 1.5rem;
+}
+.section-tile {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  background: var(--stage-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  padding: 0;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s, box-shadow 0.15s;
+}
+.section-tile:not(:disabled):hover {
+  border-color: var(--spotlight);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+.section-tile:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.section-tile__art {
+  position: relative;
+  height: 140px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120px 120px at 78% 24%, rgba(255, 255, 255, 0.18), transparent 70%),
+    linear-gradient(135deg, var(--tile-accent, #f5c451) 0%, rgba(20, 18, 28, 0.7) 100%);
+}
+.section-tile__emblem { font-size: 3.6rem; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45)); }
+.section-tile__lock {
+  position: absolute;
+  top: 0.6rem; right: 0.7rem;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.section-tile__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 1.3rem 1.3rem;
+  flex: 1;
+}
+.section-tile__tier {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--spotlight);
+}
+.section-tile__name { font-size: 1.3rem; font-weight: 800; line-height: 1.15; }
+.section-tile__tag { color: var(--ink-soft); font-size: 0.92rem; flex: 1; }
+.section-tile__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+.section-tile__meta { font-size: 0.8rem; color: var(--spotlight-2); font-weight: 700; }

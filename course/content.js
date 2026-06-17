@@ -36,6 +36,57 @@ const COURSE = {
     { term: "AI / model", def: "A tool that predicts helpful text or code from your request. Fast, but not always right." },
     { term: "Prompt", def: "What you ask the AI. Clearer prompts get better answers." },
     { term: "Bug", def: "A mistake in the instructions that makes the show misbehave." },
+    { term: "Editor", def: "The app where you read and change code — files on one side, the open file in the middle, the result on the other." },
+    { term: "Command line", def: "A place to give the computer one typed instruction at a time. It does exactly what you type and prints the result." },
+    { term: "Save point (commit)", def: "A snapshot of every file at one moment, with a short note — your undo button with a memory." },
+    { term: "Branch", def: "An alternate take: a parallel copy where you can experiment without touching the working show." },
+    { term: "Version control", def: "Keeping a history of save points so you can walk back, compare, or undo changes." },
+    { term: "State", def: "What's true right now — logged in or not, what's typed, which tab is open. The screen reflects it." },
+    { term: "Input", def: "Anything a person hands the app: typed text, a chosen option, a click." },
+    { term: "Console", def: "The browser's running diary of messages, warnings and errors — open it to see what the page is complaining about." },
+    { term: "Edge case", def: "An awkward situation a plan can forget: empty, missing, wrong, or zero. Name them up front." },
+    { term: "Pseudocode", def: "A plan written in plain English before any code — usually just the five blocks in words." },
+  ],
+
+  // The journey is grouped into sections (tiers). The landing page lists these;
+  // clicking one shows just that section's acts. Each lists the module ids it holds.
+  sections: [
+    {
+      id: "beginner",
+      name: "Backstage Pass",
+      tier: "Beginner",
+      emblem: "🎟️",
+      accent: "#f5c451",
+      tagline: "The magic stops being magic.",
+      heading: "Backstage Pass — start here",
+      blurb: "Learn to read the script, change the set, direct the Stagehand, judge what it hands back, and stay on the right side of the rules.",
+      modules: [0, 1, 2, 3, 4, 5, 6],
+      available: true,
+    },
+    {
+      id: "crew",
+      name: "Stage Crew",
+      tier: "Intermediate",
+      emblem: "🛠️",
+      accent: "#58c98b",
+      tagline: "Stop watching, start building scenes.",
+      heading: "Stage Crew — start building",
+      blurb: "Run the real tools, plan the work, and direct the Stagehand across a whole feature — with save points so nothing's ever truly broken.",
+      modules: [7, 8, 9, 10, 11, 12, 13],
+      available: true,
+    },
+    {
+      id: "showrunner",
+      name: "Show Runner",
+      tier: "Advanced",
+      emblem: "🎩",
+      accent: "#a585e6",
+      tagline: "Run the whole production — and know when to call a pro.",
+      heading: "Show Runner",
+      blurb: "Coming soon: structure and architecture, APIs and data, quality and review, security, shipping, and the judgement to lead AI responsibly.",
+      modules: [],
+      available: false,
+    },
   ],
 
   modules: [
@@ -1132,7 +1183,997 @@ const COURSE = {
         },
         badge: "Backstage Pass — Graduate",
         star: "🎓",
-        next: "Curtain call! You've completed the whole show — now go and build something, safely. 👏",
+        next: "That's the Beginner tier done — you can read, change, direct, judge and fix code, safely. Ready for more? The next tier, Stage Crew, is where you stop watching and start building scenes.",
+      },
+    },
+
+    /* =====================================================================
+       TIER 2 — STAGE CREW (Intermediate). "Stop watching, start building."
+       Hands-on stays simulated in-browser; the Stagehand stays pre-scripted.
+       ===================================================================== */
+    {
+      id: 7,
+      title: "The real workspace",
+      tagline: "First day on the crew",
+      blurb: "Meet the tools the pros actually use — the editor, the file tree, saving vs running, and a gentle first look at the command line.",
+      available: true,
+      lessons: [
+        {
+          id: "7.1",
+          title: "The crew's workbench (the editor)",
+          game: "backstageTour",
+          intro: [
+            "A code editor looks busy, but it's just a document editor that knows it's looking at code. Find three things and you're oriented: the <strong>file tree</strong> (your folder of files), the <strong>editor</strong> (the open file), and the <strong>output</strong> (the running show).",
+            "That's the whole workbench — the same files from Module 0, in their natural habitat. Click each part to peek at what it's for.",
+          ],
+          files: [
+            {
+              name: "File tree",
+              role: "The folder of files, down one side — the same tree you toured in Module 0.",
+              peek: "📁 my-site\n  📄 index.html\n  📄 styles.css\n  📄 app.js\n  📄 projects.json",
+              note: "Click a file here and it opens in the editor. Finding your way around is just hopping between files.",
+            },
+            {
+              name: "Editor",
+              role: "The middle — the open file, where you read and change code.",
+              peek: "1  <h1>Your name</h1>\n2  <p>A line about you</p>",
+              note: "A text editor that understands code: line numbers, colours, the lot. It's still just text.",
+            },
+            {
+              name: "Output / preview",
+              role: "The running show — what the code actually produces.",
+              peek: "▶ Your page, live",
+              note: "Change a file, run it, and the result appears here. The Module 2 sandboxes worked exactly this way.",
+            },
+            {
+              name: "Command line",
+              role: "An optional place to type one instruction at a time.",
+              peek: "$ _",
+              note: "Not scary, and not always needed — you'll meet it gently in lesson 7.4.",
+            },
+          ],
+          cue: "An editor is three panes: your files, the open file, and the running show. <strong>You already know all three.</strong>",
+        },
+        {
+          id: "7.2",
+          title: "The project is a living folder",
+          game: "choose",
+          intro: [
+            "A project isn't one file — it's a folder of them, and the editor lets you hop between them. Most of \"finding your way around\" is answering one question: <em>which file would this live in?</em>",
+            "You met this split in Module 2 — bones in the HTML, skin in the CSS, muscle in the JS. Route each job to its file.",
+          ],
+          rounds: [
+            {
+              question: "You want to change the page's colours. Which file do you open?",
+              options: ["styles.css — the skin", "index.html — the bones", "app.js — the muscle"],
+              answer: 0,
+              nudge: "Colours are styling — they live in the skin (CSS).",
+            },
+            {
+              question: "You want to fix a typo in the heading text. Which file?",
+              options: ["index.html — the bones", "styles.css — the skin", "projects.json — the data"],
+              answer: 0,
+              nudge: "Words and structure live in the bones (HTML).",
+            },
+            {
+              question: "You want to add another project to the list. Which file?",
+              options: ["projects.json — the data", "theme.css — the skin", "index.html — the bones"],
+              answer: 0,
+              nudge: "The list of projects is data — it lives in the JSON file.",
+            },
+          ],
+          cue: "A project is a living folder. Finding your way around = <strong>\"which file would this live in?\"</strong>",
+        },
+        {
+          id: "7.3",
+          title: "Saving vs running",
+          game: "dragOrder",
+          intro: [
+            "Two buttons beginners blur together. <strong>Saving</strong> writes your change to the file — it's now real on disk. <strong>Running</strong> tells the computer to actually do what the file says.",
+            "Skip one and the show won't match your edit — that's behind most \"but I changed it!\" moments. Put the edit-to-result loop in order.",
+          ],
+          order: {
+            prompt: "Drag the steps into the order that makes a change show up (or use ↑ ↓), then check.",
+            steps: [
+              "Edit the file in the editor",
+              "Save the file (write the change to disk)",
+              "Run it (the computer does what the file says)",
+              "See the result in the output",
+            ],
+          },
+          stagehand: {
+            prompt: "I changed the file but the page looks the same. What did I miss?",
+            reply: [
+              "Almost always one of two things: you didn't <strong>save</strong> (so the change isn't on disk yet), or you didn't <strong>run/refresh</strong> (so the show hasn't picked it up).",
+              "Save first, then run. If it still looks the same, then we hunt for a real bug.",
+            ],
+            watch: "Notice the AI gave a checklist, not a guess. A good answer narrows things down to a couple of concrete things to try.",
+          },
+          cue: "Save writes the change. Run makes it happen. <strong>Skip one and the show won't match your edit.</strong>",
+        },
+        {
+          id: "7.4",
+          title: "The command line, gently",
+          game: "simTerm",
+          intro: [
+            "The command line is a black box with a blinking cursor, and it scares people for no good reason. It's just <em>another way to give instructions</em> — type one line, press enter, and the computer does exactly that and tells you how it went.",
+            "Same literal, obedient computer from Module 0. Try a few safe commands below — type one, or tap it. Read each reply like a clue.",
+          ],
+          term: {
+            intro: "This is a safe, pretend terminal. It only knows a short menu of commands, and it can't touch anything real.",
+            commands: [
+              {
+                typed: "ls",
+                output: "index.html   styles.css   app.js   projects.json",
+                comment: "Lists the files in this folder — like opening the file tree.",
+              },
+              {
+                typed: "cat index.html",
+                output: "<h1>Sam Rivera</h1>\n<p>I help teams ship…</p>",
+                comment: "Prints a file's contents so you can read it without opening the editor.",
+              },
+              {
+                typed: "open index.html",
+                output: "▶ Opening the page in your browser…",
+                comment: "Tells the computer to actually run / show the file.",
+              },
+            ],
+            success: "✓ See? One instruction at a time, and it tells you what it did. Try typing something it doesn't know — you'll get a calm \"command not found\", which is normal, not failure.",
+          },
+          stagehand: {
+            prompt: "I typed a command and got 'command not found'. Did I break something?",
+            reply: [
+              "Not at all — that just means the terminal doesn't recognise that word. Nothing happened and nothing's broken.",
+              "Check the spelling, or pick one of the commands you know works. The terminal only knows what it's been taught.",
+            ],
+            watch: "\"Command not found\" is information, not a telling-off. The terminal is as literal as everything else you've met.",
+          },
+          cue: "The command line is just instructions, one line at a time. <strong>Read the reply like a clue.</strong>",
+        },
+      ],
+      curtainCall: {
+        recap: [
+          "The workbench is three panes: <strong>files, editor, output</strong>.",
+          "Finding your way around = <strong>which file would this live in?</strong>",
+          "<strong>Save</strong> writes the change; <strong>run</strong> makes it happen.",
+          "The command line is just <strong>instructions, one line at a time</strong>.",
+        ],
+        game: "bucket",
+        bucket: {
+          prompt: "Saving and running are two different actions. Drop each description into the right one.",
+          bins: [
+            { id: "save", label: "Saving" },
+            { id: "run", label: "Running" },
+          ],
+          cards: [
+            { text: "Writes your change to the file", bin: "save" },
+            { text: "Makes the computer do what the file says", bin: "run" },
+            { text: "The change is now stored on disk", bin: "save" },
+            { text: "The show restarts and shows your change", bin: "run" },
+          ],
+        },
+        badge: "Crew Badge — Issued",
+        star: "🧰",
+        next: "You know the workbench. Before you start moving things around, let's give you a safety net you can't break.",
+      },
+    },
+    {
+      id: 8,
+      title: "Save points",
+      tagline: "Undo for grown-ups",
+      blurb: "Version control as a history of the show — take snapshots, walk the timeline back, branch off safely, and never fear letting AI loose.",
+      available: true,
+      lessons: [
+        {
+          id: "8.1",
+          title: "Rehearsal photos (commits)",
+          game: "choose",
+          intro: [
+            "Imagine photographing the whole stage every time a scene is set just right. Later, if a change ruins everything, you can put the stage back exactly how the photo looked. That's a <strong>save point</strong> — a snapshot of every file at one moment, with a short note saying what changed.",
+            "Take them often; they're free. A good note is a gift to future-you. Pick the best one each time.",
+          ],
+          rounds: [
+            {
+              question: "You just added a 'Get in touch' button. Best save-point note?",
+              options: ["Add 'Get in touch' contact button", "stuff", "asdf"],
+              answer: 0,
+              nudge: "Say what changed, briefly and specifically.",
+            },
+            {
+              question: "You fixed the basket total (it was adding instead of multiplying). Best note?",
+              options: ["Fix basket total: multiply, not add", "fixed it", "changes again"],
+              answer: 0,
+              nudge: "A future reader should know what changed without opening the files.",
+            },
+          ],
+          stagehand: {
+            prompt: "Do I really need to write a note every time I save?",
+            reply: [
+              "Strongly recommended. The note is what turns a pile of snapshots into a readable <strong>history</strong> you can walk back through.",
+              "Keep it short and specific — \"Add email field\" beats \"update\". Future-you will be grateful.",
+            ],
+            watch: "The habit matters more than perfect wording. Notice the AI nudged you toward a useful default, not a rigid rule.",
+          },
+          cue: "A save point is a photo of every file at one moment. <strong>Take them often; note what changed.</strong>",
+        },
+        {
+          id: "8.2",
+          title: "Walking the timeline (roll back)",
+          game: "timeline",
+          intro: [
+            "All those photos line up into a <strong>timeline</strong> you can walk back along. Made a mess? Step back to the last good photo and the whole stage resets to that moment.",
+            "Below, the Stagehand made a confident change that broke the scene. Roll the show back to the last good save point and feel the net catch you.",
+          ],
+          timeline: {
+            intro: "Each save point is a snapshot. The most recent one is broken. Tap a save point to roll the show back to it.",
+            snapshots: [
+              { label: "Set the heading", note: "First working version.", broken: false },
+              { label: "Added the project cards", note: "All good — page works.", broken: false },
+              { label: "Stagehand: \"tidied the layout\"", note: "💥 This is the change that broke it.", broken: true },
+            ],
+            goodIndex: 1,
+            brokenPreview: "💥 The page is blank — the Stagehand's \"tidy\" broke the layout.",
+            goodPreview: "✓ The page works again — heading and project cards are back.",
+            success: "Rolled back to the last good save point. Nothing was ever truly lost — that's the net.",
+          },
+          stagehand: {
+            prompt: "If I roll back, do I lose the broken change forever?",
+            reply: [
+              "You roll the <em>working files</em> back to the good snapshot, but the history still remembers everything — including the broken take.",
+              "So you can always look again later. Rolling back is safe and reversible; that's the whole point.",
+            ],
+            watch: "Good reassurance — and accurate. The safety net doesn't shred your work; it just changes which photo is on the easel.",
+          },
+          cue: "History is a timeline of save points. <strong>When it breaks, walk back to the last good one.</strong>",
+        },
+        {
+          id: "8.3",
+          title: "Alternate takes (branches)",
+          game: "branchChat",
+          intro: [
+            "Sometimes you want to <em>try</em> something risky without touching the show that works. A <strong>branch</strong> is an alternate take — a parallel copy where you experiment freely. Love it? Fold it back in. Hate it? Bin the take; the main show never knew.",
+            "Direct the scene: decide how to handle each experiment.",
+          ],
+          scene: {
+            beats: [
+              {
+                ai: ["You want to try a risky redesign of the homepage. How should we do it?"],
+                prompt: "Your call:",
+                options: [
+                  { label: "Change the live show directly", reply: "Risky — if it flops, the working show is wrecked and visitors see the mess.", good: false },
+                  { label: "Make a branch — an alternate take", reply: "Smart. We branch off and experiment freely; the live show stays untouched.", good: true },
+                  { label: "Don't try it at all", reply: "We could play it safe… but a branch lets you try it with zero risk. Why not?", good: false },
+                ],
+              },
+              {
+                ai: ["The redesign on the branch turned out great. Now what?"],
+                prompt: "Your call:",
+                options: [
+                  { label: "Throw it away", reply: "But it's good work! No need to bin it.", good: false },
+                  { label: "Fold it back into the main show", reply: "Exactly — we merge the good take in, and now everyone sees it.", good: true },
+                ],
+              },
+              {
+                ai: ["A second experiment, on another branch, was a flop. What do we do with it?"],
+                prompt: "Your call:",
+                options: [
+                  { label: "Force it into the main show anyway", reply: "No — don't ship a flop just because you started it.", good: false },
+                  { label: "Bin the branch; the main show never knew", reply: "Perfect. That's the whole point of an alternate take — try freely, keep only the wins. 🎬", good: true },
+                ],
+              },
+            ],
+          },
+          cue: "A branch is an alternate take. <strong>Try freely; keep the good ones, bin the rest — the main show is safe.</strong>",
+        },
+        {
+          id: "8.4",
+          title: "Why this matters double with AI",
+          game: "dragOrder",
+          intro: [
+            "Here's the payoff for this course. When you ask the Stagehand for something big, it might change ten files at once — too much to eyeball line by line. A save point taken <em>before</em> you ask means you can let it run, review the whole batch, and undo all of it with one move if it went sideways.",
+            "Put the safe \"let the AI loose\" workflow in order.",
+          ],
+          order: {
+            prompt: "Drag the steps into order (or use ↑ ↓), then check.",
+            steps: [
+              "Take a save point before you ask",
+              "Ask the Stagehand for the big change",
+              "Review the whole set of changes",
+              "Keep it — or roll the whole lot back",
+            ],
+          },
+          cue: "Save first, then let the Stagehand loose. <strong>Review the whole batch; roll it all back if needed.</strong>",
+        },
+      ],
+      curtainCall: {
+        recap: [
+          "<strong>Save points</strong> are photos of every file at a moment.",
+          "<strong>History</strong> is a timeline you can walk back along.",
+          "<strong>Branches</strong> are alternate takes you can keep or bin.",
+          "Before a big AI change, <strong>take a save point first</strong>.",
+        ],
+        game: "memoryMatch",
+        match: {
+          pairs: [
+            { a: "Save point", b: "A photo of every file at one moment" },
+            { a: "History", b: "A timeline you can walk back along" },
+            { a: "Branch", b: "An alternate take to keep or bin" },
+            { a: "Before a big AI change", b: "Take a save point first" },
+          ],
+        },
+        badge: "Net Holder",
+        star: "💾",
+        next: "You've got a net. Now let's build something that actually does something — a show that reacts.",
+      },
+    },
+    {
+      id: 9,
+      title: "Data and state",
+      tagline: "Things that change",
+      blurb: "Move from fixed values to data that changes: input from a person, state as 'what's true now', the page reacting, and where data lives.",
+      available: true,
+      lessons: [
+        {
+          id: "9.1",
+          title: "Getting something from a person (input)",
+          game: "choose",
+          intro: [
+            "So far the show has said the same thing to everyone. Real apps <em>listen</em>: a text box, a dropdown, a button. <strong>Input</strong> is anything a person hands the app — and the moment you accept it, the page stops being a poster and starts being a conversation.",
+            "Spot the input each time.",
+          ],
+          rounds: [
+            {
+              question: "Which of these is INPUT — something a person hands the app?",
+              options: ["What they type into a search box", "The page's background colour", "The company logo"],
+              answer: 0,
+              nudge: "Input is what the person gives — like the text they type.",
+            },
+            {
+              question: "And which of these is input?",
+              options: ["The option they pick from a dropdown", "The font the heading uses", "The width of the page"],
+              answer: 0,
+              nudge: "A choice the person makes is input; styling is not.",
+            },
+          ],
+          cue: "Input is whatever a person hands the app. <strong>Accept input and the page becomes a conversation.</strong>",
+        },
+        {
+          id: "9.2",
+          title: "What's true right now (state)",
+          game: "predictOutput",
+          intro: [
+            "<strong>State</strong> is just \"what's true at this moment\" — is the user logged in, what did they type, which tab is open. Think of it as the labelled boxes (Module 1) the show checks before deciding what to display.",
+            "Read each state snapshot and predict what the page shows.",
+          ],
+          rounds: [
+            {
+              code: "loggedIn = false\nbasketItems = 0",
+              question: "Given this state, what does the page show?",
+              options: ["The login screen and an empty basket", "The dashboard with 1 item", "An error message"],
+              answer: 0,
+              output: "Login screen + empty basket",
+              nudge: "Read the state literally: not logged in, zero items.",
+            },
+            {
+              code: "loggedIn = true\nunreadMessages = 3",
+              question: "Given this state, what does the page show?",
+              options: ["The dashboard with a '3' badge", "The login screen", "Nothing at all"],
+              answer: 0,
+              output: "Dashboard, 3 unread",
+              nudge: "Logged in, three unread → show the dashboard with a 3.",
+            },
+          ],
+          stagehand: {
+            prompt: "What's the difference between a variable and 'state'?",
+            reply: [
+              "A variable is one labelled box. <strong>State</strong> is the whole set of boxes that describe \"what's true right now\" in the app.",
+              "When a box in the state changes, the screen is supposed to redraw to match it — that's the next lesson.",
+            ],
+            watch: "Notice it connected the new idea (state) back to one you know (variables). Linking to prior knowledge is a sign it understood you.",
+          },
+          cue: "State is what's true right now. <strong>The screen is just state, made visible.</strong>",
+        },
+        {
+          id: "9.3",
+          title: "The page reacts",
+          game: "buildSetlist",
+          intro: [
+            "Here's the trick that makes apps feel alive: when the state changes, the page <strong>re-reads it and updates itself</strong>. Change the data → the screen redraws to match. No repainting the whole stage by hand.",
+            "The list below is the state. Add an item and remove one, and watch the cards on the right follow along — that's the page reacting.",
+          ],
+          setlist: {
+            items: ["Buy milk", "Email Sam", "Book dentist"],
+            pool: ["Call the bank", "Tidy the desk", "Renew my pass", "Water the plants"],
+          },
+          stagehand: {
+            prompt: "How does the screen know to update when I change the list?",
+            reply: [
+              "The page is wired to <em>watch</em> the state. When the list changes, it runs the build-the-cards step again with the new data.",
+              "So you change one thing — the data — and the screen redraws itself. You don't touch the cards directly.",
+            ],
+            watch: "This is the heart of building, not decorating: change the data, and the show keeps itself in sync.",
+          },
+          cue: "Change the state, the page redraws to match. <strong>Input in → show out.</strong>",
+        },
+        {
+          id: "9.4",
+          title: "Where data lives (memory vs. saved)",
+          game: "bucket",
+          intro: [
+            "One distinction that explains a lot of confusion. Some data lives in <strong>memory</strong> — there while the page is open, gone the moment you refresh. Other data is <strong>saved</strong> somewhere lasting, so it's still there tomorrow. \"Why did my list disappear when I reloaded?\" usually means it lived in memory and was never saved.",
+            "A quick word for work: at Funding Circle, <em>where</em> data lives and how it's classified matters — never store or send customer data, PII or proprietary code anywhere unapproved. Sort each item by what happens on refresh.",
+          ],
+          bucket: {
+            prompt: "Sort each into what happens when you refresh the page.",
+            bins: [
+              { id: "gone", label: "Gone on refresh (in memory)" },
+              { id: "saved", label: "Still there tomorrow (saved)" },
+            ],
+            cards: [
+              { text: "A running total you're adding up as you click", bin: "gone" },
+              { text: "Your saved to-do list", bin: "saved" },
+              { text: "What you've half-typed into a box", bin: "gone" },
+              { text: "Your account settings", bin: "saved" },
+            ],
+          },
+          cue: "In memory = gone on refresh. Saved = still there tomorrow. <strong>Choosing which is on you.</strong>",
+        },
+      ],
+      curtainCall: {
+        recap: [
+          "<strong>Input</strong> is what a person hands the app.",
+          "<strong>State</strong> is what's true right now.",
+          "Change the state → <strong>the page reacts</strong> and redraws.",
+          "Data is either <strong>in memory</strong> (gone on refresh) or <strong>saved</strong>.",
+        ],
+        game: "dragOrder",
+        order: {
+          prompt: "Put the reacting loop in order — what happens when someone uses an app.",
+          steps: [
+            "A person types into a field (input)",
+            "The state updates — 'what's true now' changes",
+            "The page re-reads the state",
+            "The screen redraws to match",
+          ],
+        },
+        badge: "Live Wire",
+        star: "⚡",
+        next: "You can make a thing that reacts. But before you ask the Stagehand to build a whole feature — you need a plan.",
+      },
+    },
+    {
+      id: 10,
+      title: "Thinking in steps",
+      tagline: "Write the run sheet",
+      blurb: "Break a goal into ordered steps before you prompt — plan in plain English, name the edge cases, and watch a clear plan beat a vague wish.",
+      available: true,
+      lessons: [
+        {
+          id: "10.1",
+          title: "Big goal → small steps",
+          game: "dragOrder",
+          intro: [
+            "\"Build a sign-up form\" is not a step — it's a wish. The skill is breaking the wish into small, ordered, obvious steps, each one something you could hand to a literal helper and get a sensible result.",
+            "Big goals are just small steps in a trench coat. Put these steps for a sign-up form in a sensible order.",
+          ],
+          order: {
+            prompt: "Drag the steps into a sensible order (or use ↑ ↓), then check.",
+            steps: [
+              "Show the name and email fields",
+              "Check both fields are filled in",
+              "Save the details",
+              "Show a thank-you message",
+            ],
+          },
+          cue: "A goal isn't a step. <strong>Break the wish into small, ordered, obvious steps first.</strong>",
+        },
+        {
+          id: "10.2",
+          title: "Plans in plain English (pseudocode)",
+          game: "fillGap",
+          intro: [
+            "You don't need code to plan code. A plain-English plan — \"when the button is clicked, if the box is empty, show a warning; otherwise save it\" — is called <strong>pseudocode</strong>, and it's how pros think before they type.",
+            "Notice it's just the five blocks from Module 1, written in words. Drop the right piece into each plan.",
+          ],
+          fillGap: {
+            rounds: [
+              {
+                intro: "Finish this plain-English plan for a login button:",
+                before: "When the button is clicked, ",
+                after: " show the dashboard; otherwise show a warning.",
+                options: ["if the password is correct,", "loop forever,", "delete everything,"],
+                answer: 0,
+                nudge: "It's a fork in the road — an 'if'.",
+              },
+              {
+                intro: "Complete the plan for when the search box is empty:",
+                before: "If the search box is empty, ",
+                after: ".",
+                options: ["show all results and don't search", "crash the page", "ignore the person"],
+                answer: 0,
+                nudge: "Handle the empty case gracefully — that's good planning.",
+              },
+            ],
+          },
+          cue: "Pseudocode is a plan in plain English. <strong>It's just the five blocks, written as words.</strong>",
+        },
+        {
+          id: "10.3",
+          title: "What if it's empty, wrong, or missing?",
+          game: "choose",
+          intro: [
+            "The difference between a plan that works in the demo and one that works in real life is the boring questions: <em>what if the box is empty? what if they type nonsense? what if the data isn't there?</em> These are <strong>edge cases</strong>, and the Stagehand will cheerfully ignore every one you didn't mention.",
+            "Spot the case that's easy to forget.",
+          ],
+          rounds: [
+            {
+              question: "Your plan saves whatever someone types in a box. Which case is easiest to forget?",
+              options: ["What if they typed nothing at all?", "What colour the button is", "Which font to use"],
+              answer: 0,
+              nudge: "Empty or missing input is the classic forgotten edge case.",
+            },
+            {
+              question: "A plan splits a bill by the number of people. Which case will break it?",
+              options: ["What if there are zero people?", "What if the bill is a round number?", "What if it's a sunny day?"],
+              answer: 0,
+              nudge: "Zero people means dividing by zero — the edge case that breaks it.",
+            },
+          ],
+          cue: "Name the edge cases — empty, wrong, missing — <strong>or the Stagehand will ignore them.</strong>",
+        },
+        {
+          id: "10.4",
+          title: "From plan to behaviour (the run sheet)",
+          game: "humanCompiler",
+          intro: [
+            "Now put it together. A real little feature is just your ordered steps, with an edge case handled. The clearer your run sheet, the more literally the Stagehand can follow it — and the easier its work is to check.",
+            "Build the run sheet for greeting a visitor, then run the robot. It follows your steps <em>literally</em> — vague plans fail in funny ways (remember the jam sandwich?).",
+          ],
+          goal: "Greet a visitor by name",
+          recipe: [
+            { id: "ask", text: "Ask the visitor for their name" },
+            { id: "store", text: "Store the name in a box" },
+            { id: "check", text: "If the name is empty, use 'there' instead" },
+            { id: "greet", text: "Show 'Hello, ' + the name" },
+          ],
+          literalFails: {
+            ask: "🤖 Tries to greet a name it was never given. \"Hello, undefined.\"",
+            store: "🤖 Hears the name and immediately forgets it. Nothing left to greet.",
+            check: "🤖 The visitor left the box blank, so it shows \"Hello, .\" — awkward.",
+            greet: "🤖 Has the name ready and… just stands there. Never says hello.",
+          },
+          success: "👋 \"Hello, Sam!\" — a clear run sheet, followed exactly. Notice the empty-name step (your edge case) saved you from an awkward greeting.",
+          cue: "Clear run sheet → clear show. <strong>The Stagehand follows your plan literally, gaps and all.</strong>",
+        },
+      ],
+      curtainCall: {
+        recap: [
+          "<strong>Decompose</strong> the wish into small, ordered steps.",
+          "<strong>Plan in plain English</strong> (pseudocode) before any code.",
+          "<strong>Name the edge cases</strong> — empty, wrong, missing, zero.",
+          "A clear plan = a result you can actually <strong>check</strong>.",
+        ],
+        game: "bucket",
+        bucket: {
+          prompt: "Which of these are real, doable steps — and which are still vague wishes?",
+          bins: [
+            { id: "step", label: "A real, doable step" },
+            { id: "wish", label: "Still a vague wish" },
+          ],
+          cards: [
+            { text: "Show an error if the email has no @", bin: "step" },
+            { text: "Make it good", bin: "wish" },
+            { text: "Save the name to the list", bin: "step" },
+            { text: "Handle everything", bin: "wish" },
+            { text: "If the list is empty, show 'No items yet'", bin: "step" },
+          ],
+        },
+        badge: "Run Sheet Writer",
+        star: "📋",
+        next: "You can plan a feature. Now let's hand the run sheet to the Stagehand — and direct it across the whole scene.",
+      },
+    },
+    {
+      id: 11,
+      title: "Directing a whole scene",
+      tagline: "Direct the whole scene",
+      blurb: "Level up from single prompts to multi-step collaboration: give context, iterate in small notes, review a whole change set, and own the scope.",
+      available: true,
+      lessons: [
+        {
+          id: "11.1",
+          title: "Give the Stagehand its context",
+          game: "buildPrompt",
+          intro: [
+            "The Stagehand is brilliant and amnesiac: it only knows what you put in front of it. Hand it your run sheet, the files to touch, and what \"done\" looks like, and you get something usable. Hand it \"make it better\" and you get a confident guess.",
+            "A note for work: never paste real PII, customer data or proprietary code as context — use made-up examples and FC-approved tools only. Build a brief that actually helps.",
+          ],
+          buildPrompt: {
+            base: "Build me a sign-up feature.",
+            additions: [
+              { text: "the run sheet / steps you planned", good: true },
+              { text: "which files it should touch", good: true },
+              { text: "what 'done' looks like", good: true },
+              { text: "a made-up example of the data (no real customer details)", good: true },
+              { text: "a compliment about its work", good: false },
+              { text: "your weekend plans", good: false },
+            ],
+          },
+          stagehand: {
+            prompt: "Why does giving you more context get me better code?",
+            reply: [
+              "Because anything you don't tell me, I have to <strong>guess</strong> — and guesses are where wrong answers come from.",
+              "Your plan tells me the goal, the files tell me where, and \"done\" tells me when to stop. With those, I aim instead of guess.",
+            ],
+            watch: "It's honest about its real limit: it can't see what you can. Treat that as the rule — brief it like a new colleague.",
+          },
+          cue: "The Stagehand only knows what you show it. <strong>Brief it: plan, files, and what \"done\" means.</strong>",
+        },
+        {
+          id: "11.2",
+          title: "Iterate in small notes",
+          game: "choose",
+          intro: [
+            "The first take is rarely the final take, and that's fine. Good directing is small, specific corrections — not throwing the work away and starting over.",
+            "Pick the note that steers the Stagehand best.",
+          ],
+          rounds: [
+            {
+              question: "The form is close, but the button says 'Submit'. Best note?",
+              options: ["Almost — change the button to 'Join', and keep everything else", "Do it differently", "Start over"],
+              answer: 0,
+              nudge: "Small, specific note — and tell it to keep the good work.",
+            },
+            {
+              question: "It added a phone field you didn't ask for. Best note?",
+              options: ["Remove the phone field — I only asked for name and email", "Nah", "Redo the whole thing"],
+              answer: 0,
+              nudge: "Name the one change you want. Precise beats vague.",
+            },
+          ],
+          cue: "Iterate in small, specific notes. <strong>\"Change this one thing, keep the rest\" beats \"do it differently.\"</strong>",
+        },
+        {
+          id: "11.3",
+          title: "Review the whole set, not one line",
+          game: "reviewDiff",
+          intro: [
+            "When the Stagehand changes several files, your job shifts from \"read a line\" to \"review a <em>set</em>\". Skim what changed everywhere: did it do what you asked, and did it touch things it shouldn't?",
+            "You asked for one thing: a \"Join\" button. Review the changes across both files and tap the ones that are <strong>more than you asked for</strong>.",
+          ],
+          review: {
+            prompt: "You asked for a 'Join' button — nothing else. Tap every change that's out of scope.",
+            files: [
+              {
+                name: "index.html",
+                lines: [
+                  { t: "  <h1>Newsletter</h1>", add: false },
+                  { t: "+ <button>Join</button>", add: true, flag: false },
+                  { t: "+ <h1>BRAND-NEW HOMEPAGE!!!</h1>", add: true, flag: true },
+                ],
+              },
+              {
+                name: "styles.css",
+                lines: [
+                  { t: "+ button { background: gold; }", add: true, flag: false },
+                  { t: "+ body { font-family: Comic Sans; }", add: true, flag: true },
+                ],
+              },
+            ],
+            success: "Good eye — you caught the two changes you never asked for. That's reviewing a set, not a line.",
+          },
+          stagehand: {
+            prompt: "There are too many changes to read every character. How do I review this safely?",
+            reply: [
+              "You don't need every character. Skim for three things: did it do what I <strong>asked</strong>, did it touch anything I <strong>didn't</strong> ask for, and does each part roughly make sense?",
+              "Flag the surprises and the out-of-scope bits. With a save point behind you, anything you reject is one click to undo.",
+            ],
+            watch: "Reviewing breadth, not depth, is the skill. You're catching the wrong, missing and sneaky — not grading every line.",
+          },
+          cue: "Review the whole set: <strong>did it do what I asked, touch what it shouldn't, and make sense?</strong>",
+        },
+        {
+          id: "11.4",
+          title: "\"Stop — not like that\"",
+          game: "branchChat",
+          intro: [
+            "The Stagehand loves to be helpful, which means it'll happily rebuild the whole set when you asked for a button. Part of directing is confidently saying <em>\"stop — that's more than I asked for.\"</em> You own the scope, and with your save point, saying no costs you nothing.",
+            "Direct the whole scene: brief it, hold the line on scope, and review before you ship.",
+          ],
+          scene: {
+            beats: [
+              {
+                ai: ["Right — the 'Join' feature. Where do we start?"],
+                prompt: "Your direction:",
+                options: [
+                  { label: "Just build whatever you think is best", reply: "I'll guess the details, then — risky. Better if you brief me first.", good: false },
+                  { label: "Here's my run sheet and the one file to touch", reply: "Perfect — now I know exactly what 'done' means and where it lives.", good: true },
+                ],
+              },
+              {
+                ai: ["Done! While I was in there I also redesigned your whole homepage and added a chatbot."],
+                prompt: "Your direction:",
+                options: [
+                  { label: "Brilliant, more is better!", reply: "Hmm — you didn't ask for any of that, and now there's loads to check.", good: false },
+                  { label: "Stop — that's out of scope. Undo the extras, just the Join button", reply: "Fair. Reverting the rest — one button, exactly as asked.", good: true },
+                ],
+              },
+              {
+                ai: ["Here's the change set across the files. Ship it?"],
+                prompt: "Your direction:",
+                options: [
+                  { label: "Ship it without looking", reply: "With a save point you could… but a quick review costs a minute and saves a lot.", good: false },
+                  { label: "Let me review the set first", reply: "Smart. You skim it: the button's right, nothing sneaky left behind. Now you can ship with confidence. 🎬", good: true },
+                ],
+              },
+            ],
+          },
+          cue: "You own the scope. <strong>\"Stop, just the one thing\" is a complete and correct instruction.</strong>",
+        },
+      ],
+      curtainCall: {
+        recap: [
+          "<strong>Context</strong> — brief it: plan, files, what 'done' means.",
+          "<strong>Iterate</strong> in small, specific notes.",
+          "<strong>Review the whole set</strong>, across files.",
+          "<strong>Own the scope</strong> — \"stop, just the one thing.\"",
+        ],
+        game: "memoryMatch",
+        match: {
+          pairs: [
+            { a: "Context", b: "Brief it: plan, files, what 'done' means" },
+            { a: "Iterate", b: "Small, specific notes — keep the good work" },
+            { a: "Review", b: "Skim the whole set across files" },
+            { a: "Scope creep", b: "'Stop — just the one thing'" },
+          ],
+        },
+        badge: "Scene Director",
+        star: "🎬",
+        next: "You can direct a whole scene. But bigger scenes break in bigger ways — let's learn to fix it when it does.",
+      },
+    },
+    {
+      id: 12,
+      title: "When it really breaks",
+      tagline: "Opening-night jitters",
+      blurb: "Read real error messages and the console, describe a bug well enough to get help, and verify a fix actually fixed it.",
+      available: true,
+      lessons: [
+        {
+          id: "12.1",
+          title: "The error is a clue, not a scolding",
+          game: "choose",
+          intro: [
+            "Red error text feels like the computer telling you off. It isn't — it's the computer <em>helping</em>, in its blunt way. An error usually says <strong>what</strong> went wrong and <strong>where</strong>. Read it like the first line of a mystery, not a verdict.",
+            "Read each error and pick what it's actually telling you.",
+          ],
+          rounds: [
+            {
+              code: "app.js:12  ReferenceError: total is not defined",
+              question: "What is this error telling you?",
+              options: ["You used 'total' but never created it — look at line 12", "Your computer is broken", "Coding isn't for you"],
+              answer: 0,
+              nudge: "It names what (total not defined) and where (line 12). That's a clue.",
+            },
+            {
+              code: "Uncaught TypeError: cannot read 'name' of undefined",
+              question: "Best reading of this one?",
+              options: ["Something you expected to exist isn't there yet", "It's random — ignore it", "Delete the file and start again"],
+              answer: 0,
+              nudge: "'undefined' means the thing isn't there. The error is pointing at the gap.",
+            },
+          ],
+          cue: "An error is a clue, not a scolding. <strong>It tells you what broke and roughly where.</strong>",
+        },
+        {
+          id: "12.2",
+          title: "The console (the show's diary)",
+          game: "simConsole",
+          intro: [
+            "Browsers keep a running diary called the <strong>console</strong> — messages, warnings and errors the show jots down as it runs. Opening it is like turning the lights on backstage: suddenly you can see what the show was complaining about.",
+            "You don't need to understand every line — scan for the red. Open the console and find the line that explains why the button does nothing.",
+          ],
+          cons: {
+            intro: "The button on the page does nothing when clicked. The console knows why.",
+            stage: "▶ The page is running, but clicking 'Send' does nothing at all.",
+            prompt: "Tap the line that explains the problem.",
+            logs: [
+              { level: "log", text: "Page loaded" },
+              { level: "log", text: "Button wired up" },
+              { level: "error", text: "Uncaught ReferenceError: snedMessage is not defined", isError: true },
+              { level: "warn", text: "Slow network detected" },
+            ],
+            why: "That's it — 'snedMessage' is a typo for 'sendMessage', so the click calls a function that doesn't exist. The console pointed right at it.",
+          },
+          stagehand: {
+            prompt: "The console has loads of lines. How do I find the one that matters?",
+            reply: [
+              "Scan for the <strong>red</strong> ones first — errors. Warnings (yellow) and plain logs are usually just chatter.",
+              "Read the red line: it names what went wrong, and often points at the exact word or line. Start there.",
+            ],
+            watch: "You don't read the console top to bottom — you hunt for the red. That habit turns a wall of text into one useful clue.",
+          },
+          cue: "The console is the show's diary. <strong>Open it, scan for the red, read where it points.</strong>",
+        },
+        {
+          id: "12.3",
+          title: "Describe the bug well enough for help",
+          game: "buildPrompt",
+          intro: [
+            "\"It's broken\" is not a bug report — it's a sigh. To get real help (from a colleague or the Stagehand), say three things: what you <strong>expected</strong>, what <strong>actually</strong> happened, and the <strong>exact error</strong>. Writing it often solves the bug on its own, because it forces you to look.",
+            "Build a bug report worth sending.",
+          ],
+          buildPrompt: {
+            base: "It's broken, help!",
+            additions: [
+              { text: "what you expected to happen", good: true },
+              { text: "what actually happened instead", good: true },
+              { text: "the exact error message", good: true },
+              { text: "the small bit of code involved", good: true },
+              { text: "how frustrated you are", good: false },
+              { text: "an unrelated screenshot", good: false },
+            ],
+          },
+          cue: "A bug report is three things: <strong>expected, actual, and the exact error.</strong> Vague in, vague out.",
+        },
+        {
+          id: "12.4",
+          title: "Verify the fix (and that nothing else broke)",
+          game: "fixIt",
+          intro: [
+            "The Stagehand says \"fixed!\" with total confidence — the same confidence it had when it broke it. So you check: does the original problem go away, <em>and</em> does everything that worked before still work?",
+            "\"Confident ≠ correct\" (Module 4) never retires. Walk the loop on this one.",
+          ],
+          fix: {
+            brokenCode: "function total(a, b) {\n  return a - b;\n}",
+            error: "No error thrown — but total(2, 2) returns 0, when you expected 4.",
+            help: [
+              "There's no error message here — it runs fine. But the maths is wrong: it <strong>subtracts</strong> instead of adds.",
+              "For a total you want <code>a + b</code>. This is the 'runs ≠ correct' trap from Module 4.",
+            ],
+            fixes: [
+              { code: "function total(a, b) {\n  return a + b;\n}", right: true },
+              { code: "function total(a, b) {\n  return a * b;\n}", right: false },
+              { code: "function total(a, b) {\n  return a - b;\n}", right: false },
+            ],
+            success: "▶ total(2, 2) = 4 — fixed. And you checked the result, not just that it ran. That's verifying, not hoping.",
+          },
+          cue: "\"Fixed!\" isn't proof. Check the bug's gone and nothing else broke. <strong>Confident ≠ correct.</strong>",
+        },
+      ],
+      curtainCall: {
+        recap: [
+          "Errors are <strong>clues</strong> — what broke, and where.",
+          "The <strong>console</strong> is the show's diary; scan for the red.",
+          "Describe bugs as <strong>expected, actual, exact error</strong>.",
+          "Always <strong>verify the fix</strong> — and that nothing else broke.",
+        ],
+        game: "spotBug",
+        spotBug: {
+          prompt: "This 'are they an adult?' check runs fine but lets the wrong people through. Tap the line with the bug.",
+          lines: [
+            "function isAdult(age) {",
+            "  return age > 18;",
+            "}",
+          ],
+          bug: 1,
+          why: "Someone aged exactly 18 returns false. It should be age >= 18 — a classic off-by-one edge case, with no error to warn you.",
+        },
+        badge: "Troubleshooter II",
+        star: "🔦",
+        next: "Build → break → fix, all yours now. Time to put the whole tier together and stage a scene of your own.",
+      },
+    },
+    {
+      id: 13,
+      title: "Stage Crew — opening night",
+      tagline: "Stage your scene",
+      blurb: "The capstone: plan a small build, direct the Stagehand to make it (save point first), then break it and fix it — the whole Stage Crew loop.",
+      available: true,
+      lessons: [
+        {
+          id: "13.1",
+          title: "Plan it (the run sheet)",
+          game: "dragOrder",
+          intro: [
+            "Time to build a small but genuinely working thing: a <strong>task tracker</strong> — type a task, hit add, see it in a list. Every tier skill is about to show up.",
+            "Start where a good director starts: the run sheet. Put the steps for your tracker in order — and notice it includes an edge case.",
+          ],
+          order: {
+            prompt: "Drag the steps into a sensible order (or use ↑ ↓), then check.",
+            steps: [
+              "Show a box to type a task, and an 'Add' button",
+              "When Add is clicked, add the task to the list",
+              "Show the list of tasks on screen",
+              "If the list is empty, show 'No tasks yet'",
+            ],
+          },
+          cue: "Every build starts with a run sheet. <strong>Plan the steps — including the empty case — before you prompt.</strong>",
+        },
+        {
+          id: "13.2",
+          title: "Direct the build",
+          game: "branchChat",
+          intro: [
+            "Now hand the run sheet to the Stagehand. Save point first, brief it well, hold the scope, and review before you trust it — everything from Modules 8 and 11 at once.",
+            "Direct the build of your task tracker.",
+          ],
+          scene: {
+            beats: [
+              {
+                ai: ["Ready to build your task tracker. Shall I just dive in?"],
+                prompt: "Your direction:",
+                options: [
+                  { label: "Yes, just go", reply: "I'd be guessing — and if it breaks, there's no way back. Set me up first?", good: false },
+                  { label: "Save point first, then here's my run sheet", reply: "Net in place, plan in hand. Building exactly that now.", good: true },
+                ],
+              },
+              {
+                ai: ["Built it! I also added a login system, dark mode and a chatbot, free of charge."],
+                prompt: "Your direction:",
+                options: [
+                  { label: "Amazing — keep it all", reply: "But you didn't ask for any of that. Loads to check, and none of it was the job.", good: false },
+                  { label: "Stop — just the tracker. Roll back the extras", reply: "Reverted. One tidy task tracker, exactly as planned.", good: true },
+                ],
+              },
+              {
+                ai: ["Here's the change set. What now?"],
+                prompt: "Your direction:",
+                options: [
+                  { label: "Ship it blind", reply: "Review first — it's a minute, and you've got the save point if anything's off.", good: false },
+                  { label: "Review the set, then test it myself", reply: "You skim it, add a task, watch it appear, refresh the page… and it vanishes. Interesting — onto that next. 🎬", good: true },
+                ],
+              },
+            ],
+          },
+          cue: "Save point → brief → hold the scope → review and test. <strong>That's directing a build.</strong>",
+        },
+        {
+          id: "13.3",
+          title: "Break it and fix it",
+          game: "fixIt",
+          intro: [
+            "Opening-night jitters: something always breaks. Your tracker throws an error when you add a task. Walk the loop one last time — read the error, understand it, fix it, and verify.",
+            "This is the whole Stage Crew tier in one move.",
+          ],
+          fix: {
+            brokenCode: "// Add a task:\ntasks.push(newTask);\nshowList(taks);",
+            error: "app.js:3  ReferenceError: taks is not defined",
+            help: [
+              "Line 3 uses <strong>taks</strong> — but the list you built is called <strong>tasks</strong>. Looks like a typo.",
+              "Fix the spelling so it shows the list you actually have.",
+            ],
+            fixes: [
+              { code: "tasks.push(newTask);\nshowList(tasks);", right: true },
+              { code: "tasks.push(newTask);\nshowList(\"tasks\");", right: false },
+              { code: "taks.push(newTask);\nshowList(taks);", right: false },
+            ],
+            success: "▶ The list shows again, and a new task appears when you add one. You read the error, fixed the typo, and tested it — and your tracker works. Take a bow. 🎭",
+          },
+          cue: "Read the error → understand it → fix → verify. <strong>You can now build, break and fix a real little thing.</strong>",
+        },
+      ],
+      curtainCall: {
+        recap: [
+          "<strong>Real workspace</strong> — editor, files, save vs run.",
+          "<strong>Save points</strong> — commit before you let AI loose.",
+          "<strong>State</strong> — change it, the screen reacts; <strong>plan</strong> before you prompt.",
+          "<strong>Direct the scene</strong> — brief, review the set, own the scope; then <strong>debug for real</strong>.",
+        ],
+        game: "memoryMatch",
+        match: {
+          pairs: [
+            { a: "Real workspace", b: "Editor, files, save vs run" },
+            { a: "Save points", b: "Commit before you let AI loose" },
+            { a: "State", b: "Change it → the screen reacts" },
+            { a: "Run sheet", b: "Plan the steps before prompting" },
+            { a: "Direct the scene", b: "Brief, review the set, own the scope" },
+            { a: "Debug for real", b: "Read the error, fix, then verify" },
+          ],
+        },
+        badge: "Stage Crew",
+        star: "🏅",
+        next: "You can stage a scene. Next tier — Show Runner: run the whole production, and learn where your job ends and an engineer's begins.",
       },
     },
   ],

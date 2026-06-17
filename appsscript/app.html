@@ -120,6 +120,7 @@
     window.scrollTo(0, 0);
 
     if (parts[0] === "map") return renderMap();
+    if (parts[0] === "section") return renderSection(parts[1]);
     if (parts[0] === "lesson") return renderLesson(parts[1], Number(parts[2]) || 0);
     if (parts[0] === "curtain") return renderCurtain(parts[1]);
     return renderWelcome();
@@ -145,7 +146,48 @@
     document.getElementById("start").onclick = () => go("/map");
   }
 
-  /* ---- Module map ----------------------------------------------------- */
+  /* ---- Sections + modules -------------------------------------------- */
+  function sections() {
+    return COURSE.sections || [];
+  }
+  function sectionForModule(moduleId) {
+    return sections().find((s) => s.modules.includes(Number(moduleId)));
+  }
+  // One act/module card, shared by the section page.
+  function moduleCardHTML(m, done) {
+    const lessons = m.lessons || [];
+    const doneCount = lessons.filter((l) => done.includes(l.id)).length;
+    const complete = lessons.length && doneCount === lessons.length;
+    const status = !m.available
+      ? `<span class="module__done">Coming soon</span>`
+      : complete
+      ? `<span class="module__done">✓ Done</span>`
+      : doneCount
+      ? `<span class="module__done">${doneCount}/${lessons.length}</span>`
+      : "";
+    return `
+      <button class="module" data-module="${m.id}" ${m.available ? "" : "disabled"}>
+        <span class="module__num">${m.id}</span>
+        <span>
+          <h3>${esc(m.title)}</h3>
+          <p>${esc(m.blurb)}</p>
+        </span>
+        <span style="margin-left:auto">${status}</span>
+      </button>`;
+  }
+  function wireModuleButtons(done) {
+    stage.querySelectorAll(".module[data-module]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const m = findModule(btn.dataset.module);
+        if (!m || !m.available) return;
+        // Resume at the first lesson they haven't finished.
+        const idx = m.lessons.findIndex((l) => !done.includes(l.id));
+        go(`/lesson/${m.id}/${idx === -1 ? 0 : idx}`);
+      });
+    });
+  }
+
+  /* ---- Journey landing (sections) ------------------------------------ */
   function renderMap() {
     const done = loadProgress().done;
     const lessons = allLessons();
@@ -156,8 +198,8 @@
     const complete = courseComplete();
     stage.innerHTML = `
       <p class="eyebrow">Your journey</p>
-      <h1>${complete ? "You've completed the show 🎭" : "Choose where to begin"}</h1>
-      <p>Seven short acts take you from "what even is this?" to using AI to code — wisely and safely.</p>
+      <h1>${complete ? "You've completed the show 🎭" : "Choose a section"}</h1>
+      <p>Pick a part of the journey, then choose an act inside it — ${acts.length} acts in all, from "what even is this?" to building and directing real work with AI, wisely and safely.</p>
 
       <div class="mapbar">
         <div class="mapbar__row">
@@ -184,43 +226,75 @@
           : ""
       }
 
-      <div class="module-list">
-        ${COURSE.modules
-          .map((m) => {
-            const lessons = m.lessons || [];
-            const doneCount = lessons.filter((l) => done.includes(l.id)).length;
-            const complete = lessons.length && doneCount === lessons.length;
-            const status = !m.available
+      <div class="section-tiles">
+        ${sections()
+          .map((sec) => {
+            const mods = sec.modules.map(findModule).filter(Boolean);
+            const secLessons = mods.flatMap((m) => m.lessons || []);
+            const secDone = secLessons.filter((l) => done.includes(l.id)).length;
+            const secActs = mods.filter((m) => m.lessons && m.curtainCall);
+            const secActsDone = secActs.filter(moduleComplete).length;
+            const available = sec.available !== false && mods.length > 0;
+            const allDone = secLessons.length && secDone === secLessons.length;
+            const status = !available
               ? `<span class="module__done">Coming soon</span>`
-              : complete
+              : allDone
               ? `<span class="module__done">✓ Done</span>`
-              : doneCount
-              ? `<span class="module__done">${doneCount}/${lessons.length}</span>`
-              : "";
+              : `<span class="module__done">${secActsDone}/${secActs.length} acts</span>`;
             return `
-              <button class="module" data-module="${m.id}" ${m.available ? "" : "disabled"}>
-                <span class="module__num">${m.id}</span>
-                <span>
-                  <h3>${esc(m.title)}</h3>
-                  <p>${esc(m.blurb)}</p>
+              <button class="section-tile" data-section="${esc(sec.id)}" ${available ? "" : "disabled"}>
+                <span class="section-tile__art" style="--tile-accent:${esc(sec.accent || "#f5c451")}">
+                  <span class="section-tile__emblem" aria-hidden="true">${sec.emblem || "🎭"}</span>
+                  ${available ? "" : `<span class="section-tile__lock" aria-hidden="true">🔒</span>`}
                 </span>
-                <span style="margin-left:auto">${status}</span>
+                <span class="section-tile__body">
+                  <span class="section-tile__tier">${esc(sec.tier)}</span>
+                  <span class="section-tile__name">${esc(sec.name)}</span>
+                  <span class="section-tile__tag">${esc(sec.tagline)}</span>
+                  <span class="section-tile__foot">
+                    ${available ? `<span class="section-tile__meta">${secDone}/${secLessons.length} lessons</span>` : `<span class="section-tile__meta">${secActs.length || mods.length || ""} acts coming</span>`}
+                    ${status}
+                  </span>
+                </span>
               </button>`;
           })
           .join("")}
       </div>
     `;
-    stage.querySelectorAll(".module[data-module]").forEach((btn) => {
+    stage.querySelectorAll(".section-tile[data-section]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const m = findModule(btn.dataset.module);
-        if (!m || !m.available) return;
-        // Resume at the first lesson they haven't finished.
-        const idx = m.lessons.findIndex((l) => !done.includes(l.id));
-        go(`/lesson/${m.id}/${idx === -1 ? 0 : idx}`);
+        const sec = sections().find((s) => s.id === btn.dataset.section);
+        if (!sec || sec.available === false || !sec.modules.length) return;
+        go(`/section/${sec.id}`);
       });
     });
     const replay = document.getElementById("replay");
     if (replay) replay.onclick = resetProgress;
+  }
+
+  /* ---- One section's acts -------------------------------------------- */
+  function renderSection(id) {
+    const sec = sections().find((s) => s.id === id);
+    if (!sec || !sec.modules.length) return go("/map");
+    const done = loadProgress().done;
+    const mods = sec.modules.map(findModule).filter(Boolean);
+    const secLessons = mods.flatMap((m) => m.lessons || []);
+    const secDone = secLessons.filter((l) => done.includes(l.id)).length;
+    stage.innerHTML = `
+      <p class="crumbs"><a href="#/map">Journey</a> › ${esc(sec.name)}</p>
+      <p class="eyebrow">${esc(sec.tier)} · ${esc(sec.name)}</p>
+      <h1>${esc(sec.heading || sec.tagline)}</h1>
+      ${sec.blurb ? `<p class="lead">${esc(sec.blurb)}</p>` : ""}
+      <div class="mapbar">
+        <div class="mapbar__row">
+          <span><strong>${secDone}</strong> / ${secLessons.length} lessons done in this section</span>
+        </div>
+      </div>
+      <div class="module-list">
+        ${mods.map((m) => moduleCardHTML(m, done)).join("")}
+      </div>
+    `;
+    wireModuleButtons(done);
   }
 
   /* ---- Lesson --------------------------------------------------------- */
@@ -231,7 +305,7 @@
     const isLast = idx === m.lessons.length - 1;
 
     stage.innerHTML = `
-      <p class="crumbs"><a href="#/map">Map</a> › Act ${m.id}: ${esc(m.title)} › Lesson ${lesson.id}</p>
+      <p class="crumbs"><a href="#/map">Journey</a>${(() => { const s = sectionForModule(m.id); return s ? ` › <a href="#/section/${esc(s.id)}">${esc(s.name)}</a>` : ""; })()} › Act ${m.id}: ${esc(m.title)} › Lesson ${lesson.id}</p>
       <h1>${esc(lesson.title)}</h1>
       ${lesson.intro.map((p) => `<p class="lead">${p}</p>`).join("")}
       <div class="card" id="game"></div>
@@ -1571,7 +1645,7 @@
     const cc = m.curtainCall;
 
     stage.innerHTML = `
-      <p class="crumbs"><a href="#/map">Map</a> › Act ${m.id} › Curtain Call</p>
+      <p class="crumbs"><a href="#/map">Journey</a>${(() => { const s = sectionForModule(m.id); return s ? ` › <a href="#/section/${esc(s.id)}">${esc(s.name)}</a>` : ""; })()} › Act ${m.id} › Curtain Call</p>
       <h1>🎬 Curtain Call — ${esc(m.title)}</h1>
       <div class="card">
         <h2 style="margin-top:0">What you've got</h2>
@@ -1634,7 +1708,7 @@
           <div class="badge__star">${cc.star}</div>
           <h2>${esc(cc.badge)}</h2>
           <p class="lead">${esc(cc.next)}</p>
-          ${finished ? "" : `<button class="btn btn--lg" id="back-map">Back to the map →</button>`}
+          ${finished ? "" : `<button class="btn btn--lg" id="back-map">Back to ${(() => { const s = sectionForModule(m.id); return s ? esc(s.name) : "the map"; })()} →</button>`}
         </div>`;
       if (finished) {
         html += `
@@ -1653,7 +1727,9 @@
       }
       reward.innerHTML = html;
       reward.scrollIntoView({ behavior: "smooth" });
-      document.getElementById("back-map").onclick = () => go("/map");
+      const backSec = sectionForModule(m.id);
+      document.getElementById("back-map").onclick = () =>
+        go(finished || !backSec ? "/map" : `/section/${backSec.id}`);
       const replay = document.getElementById("replay");
       if (replay) replay.onclick = resetProgress;
       if (finished) celebrate();
@@ -1712,12 +1788,259 @@
   }
   document.getElementById("reset-progress").onclick = resetProgress;
 
+  /* ---- Game: Safe Terminal (Module 7 — the command line, gently) ----- */
+  // A sandboxed, menu-driven fake terminal. It only knows a short list of
+  // commands and never touches a real shell. Complete when all are tried.
+  function simTerm(mount, lesson, onComplete) {
+    const t = lesson.term;
+    const ran = new Set();
+    let done = false;
+
+    mount.innerHTML = `
+      ${t.intro ? `<p>${esc(t.intro)}</p>` : ""}
+      <div class="term">
+        <div class="term__log" id="term-log" aria-live="polite">
+          <span class="term__line muted">Type a command and press enter, or tap one below. It does exactly what you say — nothing more.</span>
+        </div>
+        <form class="term__form" id="term-form">
+          <span class="term__dollar" aria-hidden="true">$</span>
+          <input class="term__input" id="term-input" type="text" autocomplete="off" spellcheck="false"
+                 aria-label="Type a command" placeholder="type a command…" />
+        </form>
+      </div>
+      <p class="muted">Commands you can try:</p>
+      <div class="ingredients" id="term-menu">
+        ${t.commands.map((c, i) => `<button class="btn btn--ghost" data-i="${i}">${esc(c.typed)}</button>`).join("")}
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const log = mount.querySelector("#term-log");
+    const fb = mount.querySelector("#fb");
+
+    function append(html) {
+      log.innerHTML += html;
+      log.scrollTop = log.scrollHeight;
+    }
+    function runCommand(i) {
+      const c = t.commands[i];
+      append(
+        `<span class="term__line"><span class="term__dollar">$</span> ${esc(c.typed)}</span>` +
+        `<span class="term__out">${esc(c.output)}</span>` +
+        `<span class="term__line muted"># ${esc(c.comment)}</span>`
+      );
+      ran.add(i);
+      if (ran.size === t.commands.length && !done) {
+        done = true;
+        fb.className = "feedback feedback--good";
+        fb.textContent = t.success + " Next is below.";
+        onComplete();
+      } else if (!done) {
+        fb.className = "feedback";
+        fb.textContent = `Tried ${ran.size} of ${t.commands.length} commands.`;
+      }
+    }
+    function unknown(text) {
+      const word = text.split(" ")[0];
+      append(
+        `<span class="term__line"><span class="term__dollar">$</span> ${esc(text)}</span>` +
+        `<span class="term__out term__out--err">command not found: ${esc(word)}</span>` +
+        `<span class="term__line muted"># That's normal — the terminal only knows the commands it's been given. Try one below.</span>`
+      );
+    }
+
+    mount.querySelectorAll("#term-menu [data-i]").forEach((b) =>
+      (b.onclick = () => runCommand(Number(b.dataset.i)))
+    );
+    mount.querySelector("#term-form").onsubmit = (e) => {
+      e.preventDefault();
+      const input = mount.querySelector("#term-input");
+      const val = input.value.trim();
+      if (!val) return;
+      const i = t.commands.findIndex((c) => c.typed.toLowerCase() === val.toLowerCase());
+      if (i >= 0) runCommand(i);
+      else unknown(val);
+      input.value = "";
+    };
+  }
+
+  /* ---- Game: Save-Point Timeline (Module 8 — roll back) -------------- */
+  // The latest snapshot is broken; the learner rolls back to the last good
+  // save point and feels the net catch them.
+  function timeline(mount, lesson, onComplete) {
+    const tl = lesson.timeline;
+    let current = tl.snapshots.length - 1; // start on the (broken) latest take
+    let done = false;
+
+    function render() {
+      const snap = tl.snapshots[current];
+      mount.innerHTML = `
+        ${tl.intro ? `<p>${esc(tl.intro)}</p>` : ""}
+        <div class="timeline">
+          <div class="timeline__list" role="list">
+            ${tl.snapshots
+              .map(
+                (s, i) => `
+              <button class="tl-snap${i === current ? " tl-snap--current" : ""}${s.broken ? " tl-snap--broken" : ""}" data-i="${i}" role="listitem">
+                <span class="tl-snap__dot" aria-hidden="true">${s.broken ? "💥" : "●"}</span>
+                <span><strong>${esc(s.label)}</strong><br><span class="muted">${esc(s.note)}</span></span>
+              </button>`
+              )
+              .join("")}
+          </div>
+          <div class="tl-stage compiler__output">${
+            snap.broken
+              ? `<span class="oops">${esc(tl.brokenPreview)}</span>`
+              : `<span class="ok">${esc(tl.goodPreview)}</span>`
+          }</div>
+        </div>
+        <p class="muted">Tap a save point to roll the show back to it.</p>
+        <div class="feedback ${done ? "feedback--good" : ""}" id="fb" aria-live="polite">${
+          done ? "✓ " + esc(tl.success) + " Next is below." : ""
+        }</div>
+      `;
+      mount.querySelectorAll(".tl-snap").forEach((b) =>
+        (b.onclick = () => {
+          if (done) return;
+          const i = Number(b.dataset.i);
+          current = i;
+          render();
+          const fb = mount.querySelector("#fb");
+          if (tl.snapshots[i].broken) {
+            fb.className = "feedback feedback--nudge";
+            fb.textContent = "That's the broken take — roll further back to a good save point.";
+          } else if (i === tl.goodIndex) {
+            done = true;
+            render();
+            onComplete();
+          } else {
+            fb.className = "feedback feedback--nudge";
+            fb.textContent = "That works, but it's older than it needs to be — roll back to the last good save point so you keep your good work.";
+          }
+        })
+      );
+    }
+    render();
+  }
+
+  /* ---- Game: Review the Change Set (Module 11 — review a diff) ------- */
+  // Added lines across files are tappable; the learner flags the ones that
+  // are out of scope (more than they asked for).
+  function reviewDiff(mount, lesson, onComplete) {
+    const rv = lesson.review;
+    const targets = [];
+    rv.files.forEach((f, fi) =>
+      f.lines.forEach((ln, li) => {
+        if (ln.add && ln.flag) targets.push(fi + "-" + li);
+      })
+    );
+    const found = new Set();
+    let done = false;
+
+    mount.innerHTML = `
+      <p>${esc(rv.prompt)}</p>
+      ${rv.files
+        .map(
+          (f, fi) => `
+        <p class="muted">${esc(f.name)}</p>
+        <pre class="code diff">${f.lines
+          .map((ln, li) =>
+            ln.add
+              ? `<button class="tok diff-line" data-id="${fi}-${li}" data-flag="${ln.flag ? 1 : 0}">${esc(ln.t)}</button>`
+              : `<span class="diff-ctx">${esc(ln.t)}</span>`
+          )
+          .join("")}</pre>`
+        )
+        .join("")}
+      <p class="spot-count" id="rv-count" aria-live="polite">Found 0 of ${targets.length} out-of-scope changes.</p>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const fb = mount.querySelector("#fb");
+    const count = mount.querySelector("#rv-count");
+
+    mount.querySelectorAll(".diff-line").forEach((b) =>
+      (b.onclick = () => {
+        if (done) return;
+        if (b.dataset.flag === "1") {
+          if (found.has(b.dataset.id)) return;
+          found.add(b.dataset.id);
+          b.classList.add("tok--found");
+          b.disabled = true;
+          count.textContent = `Found ${found.size} of ${targets.length} out-of-scope changes.`;
+          if (found.size === targets.length) {
+            done = true;
+            fb.className = "feedback feedback--good";
+            fb.textContent = "✓ " + rv.success + " Next is below.";
+            onComplete();
+          } else {
+            fb.className = "feedback";
+            fb.textContent = "Good catch — keep reviewing the rest.";
+          }
+        } else {
+          b.classList.add("tok--wrong");
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "That's a change you DID ask for — leave it. Look for the ones you didn't request.";
+          setTimeout(() => b.classList.remove("tok--wrong"), 700);
+        }
+      })
+    );
+  }
+
+  /* ---- Game: Simulated Console (Module 12 — read the diary) ---------- */
+  // Open a safe, fake browser console and tap the error line that explains
+  // the bug. Logs and warnings are chatter; the red error is the clue.
+  function simConsole(mount, lesson, onComplete) {
+    const c = lesson.cons;
+    let done = false;
+
+    mount.innerHTML = `
+      ${c.intro ? `<p>${esc(c.intro)}</p>` : ""}
+      <div class="tl-stage compiler__output">${esc(c.stage || "▶ The page is running, but something isn't working.")}</div>
+      <button class="btn btn--ghost" id="open-console" style="margin-top:1rem">⌨ Open the console</button>
+      <div id="console-wrap" hidden style="margin-top:.8rem">
+        <p class="muted">${esc(c.prompt)}</p>
+        <div class="console">
+          ${c.logs
+            .map(
+              (l, i) =>
+                `<button class="console-line console-line--${l.level}" data-i="${i}">
+                  <span class="console-line__tag">${esc(l.level)}</span>${esc(l.text)}
+                </button>`
+            )
+            .join("")}
+        </div>
+      </div>
+      <div class="feedback" id="fb" aria-live="polite"></div>
+    `;
+    const fb = mount.querySelector("#fb");
+    mount.querySelector("#open-console").onclick = (e) => {
+      mount.querySelector("#console-wrap").hidden = false;
+      e.currentTarget.disabled = true;
+    };
+    mount.querySelectorAll(".console-line").forEach((b) =>
+      (b.onclick = () => {
+        if (done) return;
+        const l = c.logs[Number(b.dataset.i)];
+        if (l.isError) {
+          b.classList.add("tok--found");
+          done = true;
+          fb.className = "feedback feedback--good";
+          fb.textContent = "✓ " + c.why + " Next is below.";
+          onComplete();
+        } else {
+          fb.className = "feedback feedback--nudge";
+          fb.textContent = "That line's just chatter — scan for the red error.";
+        }
+      })
+    );
+  }
+
   /* All playable games, by the name lessons/curtains refer to them by. */
   const GAMES = {
     humanCompiler, backstageTour, matchFiles, spotBlock, buildSetlist, choose,
     editHtml, editCss, editData, classify, promptLab, buildPrompt,
     predictOutput, judgeClaim, fixIt,
     dragOrder, bucket, spotFake, spotBug, fillGap, memoryMatch, branchChat,
+    simTerm, timeline, reviewDiff, simConsole,
   };
 
   /* ---- Boot ----------------------------------------------------------- */
